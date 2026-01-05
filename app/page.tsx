@@ -1,4 +1,6 @@
 // app/page.tsx
+"use client";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
@@ -140,8 +142,8 @@ export default function Page() {
     setSubmitting(true);
 
     try {
-      // If you already have an API route, update this URL to match it.
-      // This expects: POST /api/waitlist with JSON body { email, plan }
+      // OPTIONAL BACKEND:
+      // If you create app/api/waitlist/route.ts, this will hit it.
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -151,9 +153,8 @@ export default function Page() {
         }),
       });
 
+      // If backend isn't ready yet, we still show success so your funnel works.
       if (!res.ok) {
-        // Still show success if you haven’t built backend yet
-        // (comment out the next line if you want strict failure)
         setStatus("success");
         setSubmitting(false);
         return;
@@ -182,7 +183,12 @@ export default function Page() {
       <div style={S.container}>
         {/* Top bar */}
         <header style={S.topbar}>
-          <div style={S.brand} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <div
+            style={S.brand}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            role="button"
+            aria-label="Go to top"
+          >
             <div style={S.logo}>W</div>
             <div>
               <div style={S.brandName}>WOVI</div>
@@ -194,9 +200,17 @@ export default function Page() {
             <a href="#pricing" style={S.topLink}>
               Pricing
             </a>
-            <button type="button" style={S.topCta} onClick={() => openWaitlist()}>
-              Join waitlist
-            </button>
+<button
+  type="button"
+  style={S.topCta}
+  onClick={() => {
+    alert("CLICK WORKS");
+    openWaitlist();
+  }}
+>
+  Join waitlist
+</button>
+
           </div>
         </header>
 
@@ -397,7 +411,6 @@ export default function Page() {
           aria-modal="true"
           aria-label="Join the waitlist"
           onMouseDown={(e) => {
-            // Click outside to close
             if (e.target === e.currentTarget) closeWaitlist();
           }}
         >
@@ -419,12 +432,7 @@ export default function Page() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={closeWaitlist}
-                style={S.closeBtn}
-                aria-label="Close"
-              >
+              <button type="button" onClick={closeWaitlist} style={S.closeBtn} aria-label="Close">
                 ✕
               </button>
             </div>
@@ -453,7 +461,10 @@ export default function Page() {
                   autoFocus
                   style={{
                     ...S.input,
-                    borderColor: status === "error" ? "rgba(255,80,120,0.7)" : "rgba(255,255,255,0.14)",
+                    borderColor:
+                      status === "error"
+                        ? "rgba(255,80,120,0.7)"
+                        : "rgba(255,255,255,0.14)",
                   }}
                 />
 
@@ -471,9 +482,7 @@ export default function Page() {
                   {submitting ? "Joining..." : "Join the waitlist"}
                 </button>
 
-                <div style={S.tinyMuted}>
-                  Pre-launch: email only. No accounts or billing yet.
-                </div>
+                <div style={S.tinyMuted}>Pre-launch: email only. No accounts or billing yet.</div>
               </form>
             )}
           </div>
@@ -545,22 +554,10 @@ const S: Record<string, CSSProperties> = {
       "radial-gradient(circle at 50% 10%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0.95) 100%)",
   },
 
-  container: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: 1160,
-    margin: "0 auto",
-    padding: "22px 18px 70px",
-  },
+  container: { position: "relative", zIndex: 1, maxWidth: 1160, margin: "0 auto", padding: "22px 18px 70px" },
 
-  topbar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    padding: "8px 0 16px",
-  },
-  brand: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer" },
+  topbar: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 0 16px" },
+  brand: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" },
   logo: {
     width: 44,
     height: 44,
@@ -570,46 +567,29 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 950,
     letterSpacing: 0.5,
     color: "#041015",
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
   },
   brandName: { fontWeight: 950, letterSpacing: 1.2, fontSize: 13 },
   brandTag: { fontSize: 12, opacity: 0.75, marginTop: 2 },
 
   topRight: { display: "flex", alignItems: "center", gap: 10 },
-  topLink: {
-    textDecoration: "none",
-    color: "#eaf0ff",
-    opacity: 0.8,
-    fontWeight: 800,
-    fontSize: 12,
-    padding: "10px 10px",
-    borderRadius: 12,
-  },
+  topLink: { textDecoration: "none", color: "#eaf0ff", opacity: 0.8, fontWeight: 800, fontSize: 12, padding: "10px 10px", borderRadius: 12 },
   topCta: {
     border: "none",
     outline: "none",
-    textDecoration: "none",
     color: "#041015",
     fontWeight: 950,
     fontSize: 12,
     padding: "10px 14px",
     borderRadius: 14,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
     whiteSpace: "nowrap",
     cursor: "pointer",
   },
 
-  hero: {
-    display: "grid",
-    gridTemplateColumns: "1.15fr 0.85fr",
-    gap: 16,
-    alignItems: "start",
-    marginTop: 8,
-  },
+  hero: { display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 16, alignItems: "start", marginTop: 8 },
   heroLeft: {
     borderRadius: 26,
     padding: 22,
@@ -618,199 +598,50 @@ const S: Record<string, CSSProperties> = {
     boxShadow: "0 32px 90px rgba(0,0,0,0.45)",
     backdropFilter: "blur(12px)",
   },
-  chip: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "8px 12px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: 0.4,
-    color: "#bffcff",
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  chipDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 0 22px rgba(2,243,220,0.55)",
-  },
-  h1: { margin: "14px 0 10px", fontSize: 46, lineHeight: 1.05, letterSpacing: -0.8 },
-  h1Accent: {
-    background:
-      "linear-gradient(90deg, #02F3DC 0%, #00EDEC 20%, #01DEF4 40%, #21AEF5 65%, #57FE72 100%)",
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-  },
-  sub: { margin: 0, fontSize: 16, lineHeight: 1.7, opacity: 0.85, maxWidth: 680 },
-  heroButtons: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 },
-  primaryBtn: {
-    textDecoration: "none",
-    color: "#041015",
-    fontWeight: 950,
-    fontSize: 13,
-    padding: "12px 16px",
-    borderRadius: 16,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    whiteSpace: "nowrap",
-  },
-  secondaryBtn: {
-    border: "1px solid rgba(255,255,255,0.14)",
-    outline: "none",
-    background: "rgba(255,255,255,0.06)",
-    color: "#eaf0ff",
-    fontWeight: 900,
-    fontSize: 13,
-    padding: "12px 16px",
-    borderRadius: 16,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
+  chip: { display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 999, fontSize: 12, fontWeight: 900, letterSpacing: 0.4, color: "#bffcff", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.12)" },
+  chipDot: { width: 10, height: 10, borderRadius: 999, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 0 22px rgba(2,243,220,0.55)" },
 
-  heroStats: {
-    marginTop: 16,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 10,
-  },
-  statCard: {
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
+  h1: { margin: "14px 0 10px", fontSize: 46, lineHeight: 1.05, letterSpacing: -0.8 },
+  h1Accent: { background: "linear-gradient(90deg, #02F3DC 0%, #00EDEC 20%, #01DEF4 40%, #21AEF5 65%, #57FE72 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" },
+  sub: { margin: 0, fontSize: 16, lineHeight: 1.7, opacity: 0.85, maxWidth: 680 },
+
+  heroButtons: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 },
+  primaryBtn: { textDecoration: "none", color: "#041015", fontWeight: 950, fontSize: 13, padding: "12px 16px", borderRadius: 16, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 18px 55px rgba(0,0,0,0.45)", whiteSpace: "nowrap" },
+  secondaryBtn: { border: "1px solid rgba(255,255,255,0.14)", outline: "none", background: "rgba(255,255,255,0.06)", color: "#eaf0ff", fontWeight: 900, fontSize: 13, padding: "12px 16px", borderRadius: 16, cursor: "pointer", whiteSpace: "nowrap" },
+
+  heroStats: { marginTop: 16, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 },
+  statCard: { borderRadius: 18, padding: 14, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)" },
   statLabel: { fontSize: 11, opacity: 0.7, fontWeight: 900, letterSpacing: 0.3 },
   statValue: { marginTop: 6, fontSize: 13, fontWeight: 950 },
   statHint: { marginTop: 6, fontSize: 12, opacity: 0.72, lineHeight: 1.5 },
 
-  heroRight: {},
-  previewCard: {
-    borderRadius: 26,
-    padding: 18,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow: "0 32px 90px rgba(0,0,0,0.45)",
-    backdropFilter: "blur(12px)",
-  },
+  previewCard: { borderRadius: 26, padding: 18, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 90px rgba(0,0,0,0.45)", backdropFilter: "blur(12px)" },
   previewTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
   previewTitle: { fontWeight: 950, fontSize: 13, letterSpacing: 0.2 },
-  previewPill: {
-    fontSize: 11,
-    fontWeight: 900,
-    opacity: 0.9,
-    padding: "6px 10px",
-    borderRadius: 999,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  previewGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 10,
-  },
-  previewItem: {
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
+  previewPill: { fontSize: 11, fontWeight: 900, opacity: 0.9, padding: "6px 10px", borderRadius: 999, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)" },
+  previewGrid: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 },
+  previewItem: { borderRadius: 18, padding: 12, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)" },
   previewKicker: { fontSize: 11, opacity: 0.7, fontWeight: 900, letterSpacing: 0.3 },
   previewMain: { marginTop: 6, fontSize: 12, fontWeight: 950, lineHeight: 1.4 },
   previewSub: { marginTop: 6, fontSize: 12, opacity: 0.72, lineHeight: 1.5 },
   previewFoot: { marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" },
-  previewBtn: {
-    border: "none",
-    outline: "none",
-    textDecoration: "none",
-    color: "#041015",
-    fontWeight: 950,
-    fontSize: 12,
-    padding: "10px 12px",
-    borderRadius: 14,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
   mutedSmall: { fontSize: 12, opacity: 0.72 },
+  previewBtn: { border: "none", outline: "none", color: "#041015", fontWeight: 950, fontSize: 12, padding: "10px 12px", borderRadius: 14, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 18px 55px rgba(0,0,0,0.45)", cursor: "pointer", whiteSpace: "nowrap" },
 
-  section: {
-    marginTop: 18,
-    borderRadius: 26,
-    padding: 18,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow: "0 32px 90px rgba(0,0,0,0.35)",
-    backdropFilter: "blur(12px)",
-  },
+  section: { marginTop: 18, borderRadius: 26, padding: 18, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 90px rgba(0,0,0,0.35)", backdropFilter: "blur(12px)" },
   sectionHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
   h2: { margin: 0, fontSize: 22, letterSpacing: -0.2 },
   p: { margin: "8px 0 0", opacity: 0.85, lineHeight: 1.7, maxWidth: 860 },
-
-  notice: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "10px 12px",
-    borderRadius: 999,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    fontSize: 12,
-    fontWeight: 900,
-    opacity: 0.9,
-  },
-  noticeDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 0 22px rgba(2,243,220,0.55)",
-  },
+  notice: { display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 999, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)", fontSize: 12, fontWeight: 900, opacity: 0.9 },
+  noticeDot: { width: 10, height: 10, borderRadius: 999, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 0 22px rgba(2,243,220,0.55)" },
 
   tierGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 },
-  tierCard: {
-    borderRadius: 22,
-    padding: 16,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: 540,
-  },
+  tierCard: { borderRadius: 22, padding: 16, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.14)", display: "flex", flexDirection: "column", minHeight: 540 },
   tierCardHighlight: { boxShadow: "0 40px 120px rgba(0,0,0,0.55)" },
   tierHeader: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   tierName: { fontWeight: 950, fontSize: 16, letterSpacing: -0.2 },
-  tierBadge: {
-    marginTop: 8,
-    display: "inline-flex",
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "rgba(255,255,255,0.04)",
-    fontSize: 12,
-    fontWeight: 900,
-  },
-  popular: {
-    fontSize: 11,
-    fontWeight: 950,
-    padding: "8px 10px",
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, rgba(2,243,220,0.25), rgba(33,174,245,0.18), rgba(87,254,114,0.18))",
-    border: "1px solid rgba(2,243,220,0.35)",
-    color: "#bffcff",
-    whiteSpace: "nowrap",
-  },
+  tierBadge: { marginTop: 8, display: "inline-flex", padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.16)", background: "rgba(255,255,255,0.04)", fontSize: 12, fontWeight: 900 },
+  popular: { fontSize: 11, fontWeight: 950, padding: "8px 10px", borderRadius: 999, background: "linear-gradient(135deg, rgba(2,243,220,0.25), rgba(33,174,245,0.18), rgba(87,254,114,0.18))", border: "1px solid rgba(2,243,220,0.35)", color: "#bffcff", whiteSpace: "nowrap" },
   priceRow: { display: "flex", alignItems: "baseline", gap: 8, marginTop: 10 },
   price: { fontSize: 38, fontWeight: 950, letterSpacing: -0.8 },
   period: { fontSize: 13, opacity: 0.75, fontWeight: 900 },
@@ -822,128 +653,31 @@ const S: Record<string, CSSProperties> = {
   dot: { width: 9, height: 9, borderRadius: 999, marginTop: 6, flex: "0 0 9px" },
   bestForWrap: { marginTop: 14 },
   bestFor: { marginTop: 8, fontSize: 13, opacity: 0.8, lineHeight: 1.6 },
-
-  tierBtn: {
-    marginTop: "auto",
-    borderRadius: 16,
-    padding: "12px 14px",
-    fontWeight: 950,
-    fontSize: 13,
-    cursor: "pointer",
-  },
+  tierBtn: { marginTop: "auto", borderRadius: 16, padding: "12px 14px", fontWeight: 950, fontSize: 13, cursor: "pointer" },
   tierBtnHighlight: { boxShadow: "0 22px 70px rgba(0,0,0,0.55)" },
   smallMuted: { marginTop: 10, fontSize: 12, opacity: 0.7 },
 
-  footer: {
-    marginTop: 18,
-    paddingTop: 14,
-    borderTop: "1px solid rgba(255,255,255,0.12)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-    fontSize: 12,
-    opacity: 0.8,
-  },
+  footer: { marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 12, opacity: 0.8 },
   footerLinks: { display: "flex", gap: 14, alignItems: "center" },
   footerLink: { textDecoration: "none", color: "#eaf0ff", opacity: 0.85 },
-  footerBtnLink: {
-    border: "none",
-    background: "transparent",
-    color: "#eaf0ff",
-    opacity: 0.85,
-    cursor: "pointer",
-    fontSize: 12,
-    padding: 0,
-    fontWeight: 800,
-  },
+  footerBtnLink: { border: "none", background: "transparent", color: "#eaf0ff", opacity: 0.85, cursor: "pointer", fontSize: 12, padding: 0, fontWeight: 800 },
 
-  /* Modal */
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 9999,
-    background: "rgba(0,0,0,0.65)",
-    backdropFilter: "blur(10px)",
-    display: "grid",
-    placeItems: "center",
-    padding: 16,
-  },
-  modalCard: {
-    width: "100%",
-    maxWidth: 520,
-    borderRadius: 24,
-    padding: 16,
-    background: "rgba(14,18,30,0.85)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    boxShadow: "0 45px 140px rgba(0,0,0,0.7)",
-  },
+  modalOverlay: { position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)", display: "grid", placeItems: "center", padding: 16 },
+  modalCard: { width: "100%", maxWidth: 520, borderRadius: 24, padding: 16, background: "rgba(14,18,30,0.85)", border: "1px solid rgba(255,255,255,0.14)", boxShadow: "0 45px 140px rgba(0,0,0,0.7)" },
   modalTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
   modalTitle: { fontSize: 16, fontWeight: 950, letterSpacing: -0.2 },
   modalSub: { marginTop: 8, fontSize: 13, opacity: 0.8, lineHeight: 1.6 },
-  closeBtn: {
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.06)",
-    color: "#eaf0ff",
-    borderRadius: 14,
-    padding: "10px 12px",
-    cursor: "pointer",
-    fontWeight: 950,
-  },
+  closeBtn: { border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)", color: "#eaf0ff", borderRadius: 14, padding: "10px 12px", cursor: "pointer", fontWeight: 950 },
 
   form: { marginTop: 14, display: "grid", gap: 10 },
   label: { fontSize: 12, fontWeight: 900, opacity: 0.85 },
-  input: {
-    borderRadius: 16,
-    padding: "12px 14px",
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    color: "#eaf0ff",
-    outline: "none",
-    fontSize: 14,
-  },
-  submitBtn: {
-    marginTop: 4,
-    border: "none",
-    borderRadius: 16,
-    padding: "12px 14px",
-    fontWeight: 950,
-    fontSize: 13,
-    color: "#041015",
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-  },
+  input: { borderRadius: 16, padding: "12px 14px", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.14)", color: "#eaf0ff", outline: "none", fontSize: 14 },
+  submitBtn: { marginTop: 4, border: "none", borderRadius: 16, padding: "12px 14px", fontWeight: 950, fontSize: 13, color: "#041015", background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 18px 55px rgba(0,0,0,0.45)" },
   tinyMuted: { marginTop: 4, fontSize: 12, opacity: 0.7, lineHeight: 1.55 },
   errorText: { fontSize: 12, color: "rgba(255,120,150,1)", fontWeight: 900 },
 
   successBox: { marginTop: 14, display: "grid", gap: 10 },
   successTitle: { fontSize: 18, fontWeight: 950 },
   successBody: { fontSize: 13, opacity: 0.85, lineHeight: 1.7 },
-  successBtn: {
-    marginTop: 4,
-    border: "none",
-    borderRadius: 16,
-    padding: "12px 14px",
-    fontWeight: 950,
-    fontSize: 13,
-    color: "#041015",
-    background:
-      "linear-gradient(135deg, #57FE72 0%, #02F3DC 35%, #21AEF5 75%, #00EDEC 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    cursor: "pointer",
-  },
+  successBtn: { marginTop: 4, border: "none", borderRadius: 16, padding: "12px 14px", fontWeight: 950, fontSize: 13, color: "#041015", background: "linear-gradient(135deg, #57FE72 0%, #02F3DC 35%, #21AEF5 75%, #00EDEC 100%)", boxShadow: "0 18px 55px rgba(0,0,0,0.45)", cursor: "pointer" },
 };
-
-/*
-COPY/PASTE INSTRUCTIONS:
-1) Open: app/page.tsx
-2) Delete everything
-3) Paste this entire file
-4) Save
-5) Terminal:
-   git add .
-   git commit -m "Waitlist popup modal"
-   git push
-*/
