@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 
 type PlanId = "free" | "growth" | "pro";
 
-const PALETTE = {
+const P = {
   a: "#02F3DC",
   b: "#00EDEC",
   c: "#21AEF5",
@@ -33,7 +33,7 @@ const TIERS: Array<{
     badge: "Starter Access",
     price: "$0",
     period: "",
-    accent: PALETTE.d,
+    accent: P.d,
     desc:
       "Try Wovi risk-free. Credit card required at launch. Automatically converts into Growth unless canceled.",
     includes: [
@@ -53,9 +53,9 @@ const TIERS: Array<{
     badge: "Most Popular",
     price: "$29",
     period: "/month",
-    accent: PALETTE.a,
+    accent: P.a,
     desc:
-      "Consistent, high-quality posting without hiring an agency. Built for any industry.",
+      "Consistent posting without hiring an agency. Weekly planning + captions + visuals for any business.",
     includes: [
       "2–3 posts per day",
       "Weekly content planning",
@@ -76,9 +76,9 @@ const TIERS: Array<{
     badge: "Advanced",
     price: "$49",
     period: "/month",
-    accent: PALETTE.c,
+    accent: P.c,
     desc:
-      "More volume, deeper strategy, and scale-ready planning for serious brands.",
+      "Higher volume + deeper strategy for serious brands that want to scale content output fast.",
     includes: [
       "Everything in Growth",
       "Higher daily post volume",
@@ -104,6 +104,10 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+function scrollToId(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+}
+
 export default function Page() {
   // Waitlist modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -113,11 +117,13 @@ export default function Page() {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  // “Post score” demo module
+  // Post Score module
   const [postText, setPostText] = useState("");
   const [scoreOpen, setScoreOpen] = useState(false);
   const [score, setScore] = useState<number>(0);
-  const [subscores, setSubscores] = useState<{ label: string; value: number; max: number }[]>([]);
+  const [subscores, setSubscores] = useState<
+    { label: string; value: number; max: number }[]
+  >([]);
   const [analyzing, setAnalyzing] = useState(false);
 
   const selectedTier = useMemo(() => {
@@ -161,7 +167,8 @@ export default function Page() {
 
     setSubmitting(true);
     try {
-      // If you have /api/waitlist, it will hit it. If not, we still show success.
+      // If you later build /api/waitlist, it will work.
+      // For now, we still show success even if API isn't there.
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -182,7 +189,6 @@ export default function Page() {
   }
 
   function runScore() {
-    // Demo scoring logic (no backend yet): uses length + hooks + CTA indicators.
     const t = postText.trim();
     if (!t) return;
 
@@ -190,34 +196,45 @@ export default function Page() {
     setScoreOpen(true);
 
     setTimeout(() => {
+      // Demo scoring heuristic until backend exists
       const len = t.length;
       const hasQuestion = /\?/.test(t);
-      const hasCta = /(call|book|order|join|dm|link|tap|click|sign up|try|get started)/i.test(t);
+      const hasCta = /(call|book|order|join|dm|link|tap|click|sign up|try|get started|follow|comment)/i.test(
+        t
+      );
       const hasNumbers = /\d/.test(t);
       const hasEmoji = /[\u{1F300}-\u{1FAFF}]/u.test(t);
+      const hasOffer = /(free|deal|special|limited|today|this week|%|off|discount)/i.test(
+        t
+      );
 
-      const hook = clamp((hasQuestion ? 18 : 10) + (hasNumbers ? 10 : 0) + (hasEmoji ? 7 : 0), 0, 35);
+      const hook = clamp(
+        (hasQuestion ? 18 : 10) + (hasNumbers ? 10 : 0) + (hasEmoji ? 6 : 0) + (hasOffer ? 6 : 0),
+        0,
+        35
+      );
       const clarity = clamp(Math.min(25, Math.round(len / 12)), 0, 25);
-      const cta = clamp((hasCta ? 20 : 8) + (len > 40 ? 4 : 0), 0, 25);
-      const brand = clamp(10 + (/(we|our|you)/i.test(t) ? 8 : 4), 0, 15);
+      const cta = clamp((hasCta ? 21 : 8) + (len > 45 ? 4 : 0), 0, 25);
+      const voice = clamp(8 + (/(we|our|you|your)/i.test(t) ? 7 : 4), 0, 15);
 
-      const total = clamp(hook + clarity + cta + brand, 0, 100);
+      const total = clamp(hook + clarity + cta + voice, 0, 100);
 
       setScore(total);
       setSubscores([
         { label: "Hook Strength", value: hook, max: 35 },
         { label: "Clarity", value: clarity, max: 25 },
         { label: "Call-to-Action", value: cta, max: 25 },
-        { label: "Brand Voice", value: brand, max: 15 },
+        { label: "Brand Voice", value: voice, max: 15 },
       ]);
       setAnalyzing(false);
-    }, 650);
+    }, 600);
   }
 
   return (
     <main style={S.page}>
-      {/* Background like ResuMax vibe */}
+      {/* Background */}
       <div style={S.bg} aria-hidden="true">
+        <div style={S.grid} />
         <div style={S.stars} />
         <div style={S.glowLeft} />
         <div style={S.glowRight} />
@@ -227,31 +244,27 @@ export default function Page() {
       {/* Top nav */}
       <header style={S.nav}>
         <div style={S.navInner}>
-          <div style={S.brand}>
-            <Image
-              src="/logo.png"
-              alt="WOVI logo"
-              width={34}
-              height={34}
-              style={{ borderRadius: 10 }}
-              priority
-            />
+          <div style={S.brand} onClick={() => scrollToId("top")}>
+            <div style={S.logoWrap}>
+              <Image
+                src="/logo.png"
+                alt="WOVI"
+                width={34}
+                height={34}
+                style={{ borderRadius: 10 }}
+                priority
+              />
+            </div>
             <div>
-              <div style={S.brandName}>WOVI</div>
+              <div style={S.brandName}>Wovi</div>
               <div style={S.brandSub}>AI social media OS for any business</div>
             </div>
           </div>
 
           <div style={S.navLinks}>
-            <a href="#how" style={S.navLink}>
-              How it works
-            </a>
-            <a href="#score" style={S.navLink}>
-              Score
-            </a>
-            <a href="#pricing" style={S.navLink}>
+            <button style={S.navLinkBtn} onClick={() => scrollToId("pricing")}>
               Pricing
-            </a>
+            </button>
             <button style={S.navCta} onClick={() => openWaitlist()}>
               Join waitlist
             </button>
@@ -259,115 +272,119 @@ export default function Page() {
         </div>
       </header>
 
-      {/* HERO (centered like ResuMax) */}
-      <section style={S.hero}>
-        <div style={S.heroInner}>
-          <div style={S.heroChip}>
-            <span style={S.dot} />
-            Pre-launch · Waitlist only
-          </div>
+      {/* HERO */}
+      <section id="top" style={S.hero}>
+        <div style={S.heroGrid}>
+          {/* Left card */}
+          <div style={S.heroCard}>
+            <div style={S.heroChip}>
+              <span style={S.dot} />
+              Pre-launch · Waitlist only
+            </div>
 
-          <h1 style={S.h1}>
-            Let AI run your{" "}
-            <span style={S.gradText}>social media</span>.
-          </h1>
+            <h1 style={S.h1}>
+              AI that turns your business goals into{" "}
+              <span style={S.gradText}>ready-to-post</span> content.
+            </h1>
 
-          <p style={S.sub}>
-            Wovi turns weekly business goals into captions, visuals, and posting plans —
-            so you never wonder what to post again.
-          </p>
+            <p style={S.sub}>
+              Wovi replaces the planning and creation behind social media — captions, images,
+              and weekly posting plans — so you stay consistent without burnout.
+            </p>
 
-          <div style={S.heroCtas}>
-            <button style={S.primary} onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}>
-              Pick a plan
-            </button>
-            <button style={S.secondary} onClick={() => openWaitlist()}>
-              Join waitlist
-            </button>
-          </div>
+            <div style={S.heroCtas}>
+              <button style={S.primary} onClick={() => scrollToId("pricing")}>
+                Pick a plan
+              </button>
+              <button style={S.secondary} onClick={() => openWaitlist()}>
+                Join waitlist
+              </button>
+            </div>
 
-          <div style={S.heroChecks}>
-            <span style={S.check}>✓ Email only (pre-launch)</span>
-            <span style={S.check}>✓ Works for any industry</span>
-            <span style={S.check}>✓ Cancel anytime (at launch)</span>
-          </div>
-
-          {/* 3 cards */}
-          <div style={S.cardRow}>
-            <div style={S.smallCard}>
-              <div style={S.smallIcon}>AI</div>
-              <div style={S.smallTitle}>
-                AI <span style={{ color: PALETTE.a }}>Powered</span>
+            <div style={S.miniCards}>
+              <div style={S.miniCard}>
+                <div style={S.miniLabel}>Works for</div>
+                <div style={S.miniTitle}>Any industry</div>
+                <div style={S.miniText}>Restaurants, HVAC, ecom, creators, startups</div>
               </div>
-              <div style={S.smallDesc}>Smart weekly planning + content creation</div>
+              <div style={S.miniCard}>
+                <div style={S.miniLabel}>Replaces</div>
+                <div style={S.miniTitle}>Daily brainstorming</div>
+                <div style={S.miniText}>No “what should I post?”</div>
+              </div>
+              <div style={S.miniCard}>
+                <div style={S.miniLabel}>Outcome</div>
+                <div style={S.miniTitle}>Consistency</div>
+                <div style={S.miniText}>Plans + content every week</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right demo card */}
+          <div style={S.demoCard}>
+            <div style={S.demoTop}>
+              <div style={S.demoTitle}>This week in Wovi</div>
+              <div style={S.demoPill}>Auto-planned</div>
             </div>
 
-            <div style={S.smallCard}>
-              <div style={S.smallIcon}>📈</div>
-              <div style={S.smallTitle}>Consistency</div>
-              <div style={S.smallDesc}>No burnout, no disappearing for weeks</div>
+            <div style={S.demoGrid}>
+              <div style={S.demoBox}>
+                <div style={S.demoLabel}>Input</div>
+                <div style={S.demoStrong}>Promotion:</div>
+                <div style={S.demoText}>“New winter special”</div>
+                <div style={S.demoSmall}>Tone: confident · modern</div>
+              </div>
+
+              <div style={S.demoBox}>
+                <div style={S.demoLabel}>Output</div>
+                <div style={S.demoStrong}>Captions + image concepts</div>
+                <div style={S.demoText}>Ready-to-post variations</div>
+              </div>
+
+              <div style={S.demoBox}>
+                <div style={S.demoLabel}>Plan</div>
+                <div style={S.demoStrong}>Weekly posting schedule</div>
+                <div style={S.demoText}>Daily suggestions</div>
+              </div>
+
+              <div style={S.demoBox}>
+                <div style={S.demoLabel}>Result</div>
+                <div style={S.demoStrong}>You stay consistent</div>
+                <div style={S.demoText}>No agency, no burnout</div>
+              </div>
             </div>
 
-            <div style={S.smallCard}>
-              <div style={S.smallIcon}>⚡</div>
-              <div style={S.smallTitle}>Fast output</div>
-              <div style={S.smallDesc}>Captions, visuals, and a plan in minutes</div>
+            <div style={S.demoBottom}>
+              <div style={S.demoHint}>Pick a plan now. Get early access when we launch.</div>
+              <button style={S.demoBtn} onClick={() => openWaitlist()}>
+                Join waitlist
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how" style={S.section}>
+      {/* Post Score */}
+      <section style={S.section}>
         <div style={S.sectionInner}>
-          <h2 style={S.h2}>How Wovi works</h2>
-          <p style={S.p}>
-            Simple 3-step flow. No niche templates. Wovi adapts to your business.
-          </p>
-
-          <div style={S.steps}>
-            <div style={S.step}>
-              <div style={S.stepNum}>1</div>
-              <div>
-                <div style={S.stepTitle}>Tell Wovi what matters this week</div>
-                <div style={S.stepText}>Promotions, events, launches, tone, and goals.</div>
-              </div>
-            </div>
-            <div style={S.step}>
-              <div style={S.stepNum}>2</div>
-              <div>
-                <div style={S.stepTitle}>Wovi generates the content</div>
-                <div style={S.stepText}>Captions, images (or ideas), and a weekly posting plan.</div>
-              </div>
-            </div>
-            <div style={S.step}>
-              <div style={S.stepNum}>3</div>
-              <div>
-                <div style={S.stepTitle}>You stay consistent</div>
-                <div style={S.stepText}>No guessing. No agency. No daily brainstorming.</div>
-              </div>
-            </div>
+          <div style={S.sectionHead}>
+            <h2 style={S.h2}>Rate your post with AI (Post Score)</h2>
+            <p style={S.p}>
+              Paste a caption (or post idea). Wovi scores it for hook, clarity, CTA, and brand voice —
+              then you’ll generate better versions at launch.
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* Score module */}
-      <section id="score" style={S.section}>
-        <div style={S.sectionInner}>
-          <h2 style={S.h2}>Upload a post → Get an AI score</h2>
-          <p style={S.p}>
-            Pre-launch demo: paste a post caption and Wovi will rate it (hook, clarity, CTA, voice).
-          </p>
 
           <div style={S.scoreWrap}>
             <div style={S.scoreLeft}>
-              <label style={S.label}>Paste your post caption</label>
+              <div style={S.label}>Paste your caption</div>
               <textarea
                 style={S.textarea}
                 value={postText}
                 onChange={(e) => setPostText(e.target.value)}
-                placeholder={`Example:\n“Middle TN — what’s your go-to BBQ order? 👀\nWe’re back Jan 13th. Tap follow so you don’t miss it.”`}
+                placeholder={`Example:\n“Middle TN — what’s your go-to BBQ order? 👀\nWe’re back Jan 13th. Tap follow so you don’t miss it.”\n\nOr:\n“New winter special is live. Comment ‘MENU’ and we’ll DM it.”`}
               />
+
               <div style={S.scoreBtns}>
                 <button
                   style={S.primary}
@@ -385,15 +402,19 @@ export default function Page() {
                 >
                   Clear
                 </button>
+                <button style={S.ghost} onClick={() => openWaitlist()}>
+                  Join waitlist
+                </button>
               </div>
-              <div style={S.miniNote}>This is a demo score (no account needed yet).</div>
+
+              <div style={S.tinyMuted}>Pre-launch demo. No account required yet.</div>
             </div>
 
             <div style={S.scoreRight}>
               {!scoreOpen ? (
                 <div style={S.scoreEmpty}>
                   <div style={S.scoreEmptyTitle}>Your Wovi Score</div>
-                  <div style={S.scoreEmptySub}>Paste a post and press “Get score”.</div>
+                  <div style={S.scoreEmptySub}>Paste a caption and press “Get score”.</div>
                 </div>
               ) : (
                 <div style={S.scoreCard}>
@@ -403,12 +424,7 @@ export default function Page() {
                   </div>
 
                   <div style={S.barBg}>
-                    <div
-                      style={{
-                        ...S.barFill,
-                        width: `${clamp(score, 0, 100)}%`,
-                      }}
-                    />
+                    <div style={{ ...S.barFill, width: `${clamp(score, 0, 100)}%` }} />
                   </div>
 
                   <div style={S.subRows}>
@@ -426,7 +442,7 @@ export default function Page() {
                   </div>
 
                   <div style={S.scoreHint}>
-                    Want this score + rewrites automatically every day? Join the waitlist.
+                    Want the score + auto rewrites + a weekly plan? Join the waitlist.
                   </div>
 
                   <button style={S.navCta} onClick={() => openWaitlist()}>
@@ -442,13 +458,14 @@ export default function Page() {
       {/* Pricing */}
       <section id="pricing" style={S.section}>
         <div style={S.sectionInner}>
-          <div style={S.pricingHead}>
-            <div>
-              <h2 style={S.h2}>WOVI Pricing Plans</h2>
-              <p style={S.p}>
-                <b>Pre-launch rule:</b> All plans lead to the waitlist. Email only. Billing activates at launch.
-              </p>
-            </div>
+          <h2 style={S.h2}>WOVI Pricing Plans</h2>
+          <p style={S.p}>
+            <b>Pre-launch rule:</b> All plans lead to the waitlist. Email only. Billing activates at launch.
+          </p>
+
+          <div style={S.prelaunchPill}>
+            <span style={S.dotSmall} />
+            Email only · Full billing activates at launch
           </div>
 
           <div style={S.tierGrid}>
@@ -459,8 +476,8 @@ export default function Page() {
                   ...S.tierCard,
                   border: t.highlight
                     ? `1px solid rgba(2,243,220,0.55)`
-                    : `1px solid rgba(255,255,255,0.14)`,
-                  boxShadow: t.highlight ? "0 35px 120px rgba(0,0,0,0.65)" : "none",
+                    : `1px solid rgba(255,255,255,0.12)`,
+                  boxShadow: t.highlight ? "0 40px 120px rgba(0,0,0,0.65)" : "none",
                 }}
               >
                 <div style={S.tierTop}>
@@ -477,7 +494,7 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* FIX: only one “Most Popular” label (NOT two) */}
+                  {/* FIX: only ONE Most Popular (not 2) */}
                   {t.highlight ? <div style={S.popPill}>Most Popular</div> : null}
                 </div>
 
@@ -507,9 +524,9 @@ export default function Page() {
                   style={{
                     ...S.pickBtn,
                     background: t.highlight
-                      ? `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.b} 25%, ${PALETTE.e} 45%, ${PALETTE.c} 70%, ${PALETTE.d} 100%)`
+                      ? `linear-gradient(135deg, ${P.a} 0%, ${P.b} 25%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`
                       : "rgba(255,255,255,0.06)",
-                    color: t.highlight ? "#031016" : "#eaf0ff",
+                    color: t.highlight ? "#041015" : "#eaf0ff",
                     border: t.highlight ? "none" : "1px solid rgba(255,255,255,0.14)",
                   }}
                   onClick={() => openWaitlist(t.id)}
@@ -525,12 +542,12 @@ export default function Page() {
       </section>
 
       <footer style={S.footer}>
-        <div style={{ opacity: 0.8 }}>© {new Date().getFullYear()} WOVI</div>
+        <div style={{ opacity: 0.8 }}>© {new Date().getFullYear()} Wovi</div>
         <div style={S.footerLinks}>
-          <a style={S.footerLink} href="#pricing">
+          <button style={S.footerLinkBtn} onClick={() => scrollToId("pricing")}>
             Pricing
-          </a>
-          <button style={S.footerBtn} onClick={() => openWaitlist()}>
+          </button>
+          <button style={S.footerLinkBtn} onClick={() => openWaitlist()}>
             Waitlist
           </button>
         </div>
@@ -552,7 +569,7 @@ export default function Page() {
                   {selectedTier ? (
                     <>
                       Selected plan:{" "}
-                      <span style={{ color: selectedTier.accent, fontWeight: 900 }}>
+                      <span style={{ color: selectedTier.accent, fontWeight: 950 }}>
                         {selectedTier.name}
                       </span>
                     </>
@@ -580,7 +597,7 @@ export default function Page() {
               </div>
             ) : (
               <form style={S.form} onSubmit={submitWaitlist}>
-                <label style={S.label}>Email</label>
+                <div style={S.label}>Email</div>
                 <input
                   style={{
                     ...S.input,
@@ -620,7 +637,7 @@ export default function Page() {
 const S: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
-    background: "#070b18",
+    background: "#060912",
     color: "#eaf0ff",
     fontFamily:
       'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"',
@@ -629,11 +646,21 @@ const S: Record<string, CSSProperties> = {
   },
 
   bg: { position: "absolute", inset: 0, pointerEvents: "none" },
+  grid: {
+    position: "absolute",
+    inset: 0,
+    backgroundImage:
+      "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+    backgroundSize: "80px 80px",
+    maskImage:
+      "radial-gradient(circle at 50% 15%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 60%)",
+    opacity: 0.22,
+  },
   stars: {
     position: "absolute",
     inset: 0,
     backgroundImage:
-      "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.20) 1px, transparent 1px), radial-gradient(circle at 65% 35%, rgba(255,255,255,0.16) 1px, transparent 1px), radial-gradient(circle at 35% 75%, rgba(255,255,255,0.12) 1px, transparent 1px)",
+      "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.22) 1px, transparent 1px), radial-gradient(circle at 65% 35%, rgba(255,255,255,0.18) 1px, transparent 1px), radial-gradient(circle at 35% 75%, rgba(255,255,255,0.12) 1px, transparent 1px)",
     backgroundSize: "260px 260px",
     opacity: 0.25,
   },
@@ -644,7 +671,7 @@ const S: Record<string, CSSProperties> = {
     left: -420,
     top: -350,
     borderRadius: 999,
-    filter: "blur(85px)",
+    filter: "blur(90px)",
     background:
       "radial-gradient(circle at 30% 30%, rgba(2,243,220,0.85) 0%, rgba(2,243,220,0) 60%)",
   },
@@ -655,15 +682,15 @@ const S: Record<string, CSSProperties> = {
     right: -420,
     top: -380,
     borderRadius: 999,
-    filter: "blur(90px)",
+    filter: "blur(95px)",
     background:
-      "radial-gradient(circle at 70% 30%, rgba(33,174,245,0.8) 0%, rgba(33,174,245,0) 60%)",
+      "radial-gradient(circle at 70% 30%, rgba(33,174,245,0.80) 0%, rgba(33,174,245,0) 60%)",
   },
   vignette: {
     position: "absolute",
     inset: 0,
     background:
-      "radial-gradient(circle at 50% 30%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.92) 100%)",
+      "radial-gradient(circle at 50% 20%, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.72) 55%, rgba(0,0,0,0.92) 100%)",
   },
 
   nav: {
@@ -671,7 +698,7 @@ const S: Record<string, CSSProperties> = {
     top: 0,
     zIndex: 50,
     backdropFilter: "blur(14px)",
-    background: "rgba(7,11,24,0.60)",
+    background: "rgba(6,9,18,0.55)",
     borderBottom: "1px solid rgba(255,255,255,0.08)",
   },
   navInner: {
@@ -683,17 +710,35 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 12,
   },
-  brand: { display: "flex", alignItems: "center", gap: 10 },
-  brandName: { fontWeight: 950, letterSpacing: 1.2, fontSize: 13 },
+  brand: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    cursor: "pointer",
+    userSelect: "none",
+  },
+  logoWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(0,0,0,0.18)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    boxShadow: "0 18px 55px rgba(0,0,0,0.35)",
+  },
+  brandName: { fontWeight: 950, letterSpacing: 0.6, fontSize: 13, textTransform: "uppercase" },
   brandSub: { fontSize: 12, opacity: 0.7, marginTop: 2 },
 
   navLinks: { display: "flex", alignItems: "center", gap: 14 },
-  navLink: {
-    textDecoration: "none",
+  navLinkBtn: {
+    border: "none",
+    background: "transparent",
     color: "#eaf0ff",
     opacity: 0.82,
-    fontWeight: 800,
+    fontWeight: 900,
     fontSize: 12,
+    cursor: "pointer",
   },
   navCta: {
     border: "none",
@@ -701,15 +746,32 @@ const S: Record<string, CSSProperties> = {
     borderRadius: 14,
     fontWeight: 950,
     fontSize: 12,
-    color: "#031016",
-    background: `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.b} 25%, ${PALETTE.e} 45%, ${PALETTE.c} 70%, ${PALETTE.d} 100%)`,
+    color: "#041015",
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.b} 25%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`,
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
     cursor: "pointer",
     whiteSpace: "nowrap",
   },
 
-  hero: { padding: "70px 18px 40px" },
-  heroInner: { maxWidth: 1000, margin: "0 auto", textAlign: "center" },
+  hero: { padding: "34px 18px 18px" },
+  heroGrid: {
+    maxWidth: 1180,
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "1.2fr 0.85fr",
+    gap: 16,
+    alignItems: "start",
+  },
+
+  heroCard: {
+    borderRadius: 26,
+    padding: 22,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    boxShadow: "0 30px 110px rgba(0,0,0,0.45)",
+    backdropFilter: "blur(12px)",
+  },
+
   heroChip: {
     display: "inline-flex",
     alignItems: "center",
@@ -717,121 +779,149 @@ const S: Record<string, CSSProperties> = {
     padding: "9px 12px",
     borderRadius: 999,
     fontSize: 12,
-    fontWeight: 900,
+    fontWeight: 950,
     color: "#bffcff",
-    background: "rgba(0,0,0,0.24)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.22)",
+    border: "1px solid rgba(255,255,255,0.10)",
   },
   dot: {
     width: 10,
     height: 10,
     borderRadius: 999,
-    background: `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.c} 55%, ${PALETTE.d} 100%)`,
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.c} 55%, ${P.d} 100%)`,
     boxShadow: "0 0 18px rgba(2,243,220,0.55)",
   },
 
-  h1: { margin: "18px 0 10px", fontSize: 64, lineHeight: 1.06, letterSpacing: -1.2 },
+  h1: { margin: "16px 0 10px", fontSize: 54, lineHeight: 1.06, letterSpacing: -1.2 },
   gradText: {
-    background: `linear-gradient(90deg, ${PALETTE.a} 0%, ${PALETTE.b} 20%, ${PALETTE.e} 45%, ${PALETTE.c} 70%, ${PALETTE.d} 100%)`,
+    background: `linear-gradient(90deg, ${P.a} 0%, ${P.b} 20%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`,
     WebkitBackgroundClip: "text",
     backgroundClip: "text",
     color: "transparent",
   },
-  sub: { margin: "0 auto", maxWidth: 740, fontSize: 16, lineHeight: 1.8, opacity: 0.85 },
+  sub: { margin: "0", maxWidth: 760, fontSize: 14, lineHeight: 1.85, opacity: 0.84 },
 
-  heroCtas: { marginTop: 18, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" },
+  heroCtas: { marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" },
   primary: {
     border: "none",
-    padding: "12px 18px",
+    padding: "12px 16px",
     borderRadius: 16,
     fontWeight: 950,
     fontSize: 13,
-    color: "#031016",
-    background: `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.b} 25%, ${PALETTE.e} 45%, ${PALETTE.c} 70%, ${PALETTE.d} 100%)`,
+    color: "#041015",
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.b} 25%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`,
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
     cursor: "pointer",
   },
   secondary: {
     border: "1px solid rgba(255,255,255,0.16)",
-    padding: "12px 18px",
+    padding: "12px 16px",
     borderRadius: 16,
-    fontWeight: 900,
+    fontWeight: 950,
     fontSize: 13,
     background: "rgba(255,255,255,0.06)",
     color: "#eaf0ff",
     cursor: "pointer",
   },
-  heroChecks: { marginTop: 14, display: "flex", justifyContent: "center", gap: 18, flexWrap: "wrap", opacity: 0.75, fontSize: 12, fontWeight: 800 },
-  check: { whiteSpace: "nowrap" },
+  ghost: {
+    border: "1px solid rgba(255,255,255,0.10)",
+    padding: "12px 16px",
+    borderRadius: 16,
+    fontWeight: 900,
+    fontSize: 13,
+    background: "rgba(0,0,0,0.18)",
+    color: "#eaf0ff",
+    cursor: "pointer",
+    opacity: 0.92,
+  },
 
-  cardRow: { marginTop: 30, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, textAlign: "left" },
-  smallCard: {
-    borderRadius: 22,
+  miniCards: {
+    marginTop: 14,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 10,
+  },
+  miniCard: {
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(0,0,0,0.16)",
+    border: "1px solid rgba(255,255,255,0.10)",
+  },
+  miniLabel: { fontSize: 11, opacity: 0.7, fontWeight: 900, textTransform: "uppercase" },
+  miniTitle: { marginTop: 6, fontWeight: 950, fontSize: 13 },
+  miniText: { marginTop: 6, opacity: 0.78, fontSize: 12, lineHeight: 1.5 },
+
+  demoCard: {
+    borderRadius: 26,
     padding: 18,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
+    boxShadow: "0 30px 110px rgba(0,0,0,0.45)",
     backdropFilter: "blur(12px)",
   },
-  smallIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    display: "grid",
-    placeItems: "center",
+  demoTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  demoTitle: { fontWeight: 950, fontSize: 14 },
+  demoPill: {
+    fontSize: 11,
     fontWeight: 950,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    marginBottom: 12,
-  },
-  smallTitle: { fontSize: 18, fontWeight: 950, letterSpacing: -0.3 },
-  smallDesc: { marginTop: 6, fontSize: 13, opacity: 0.8, lineHeight: 1.6 },
-
-  section: { padding: "34px 18px" },
-  sectionInner: { maxWidth: 1180, margin: "0 auto" },
-  h2: { margin: 0, fontSize: 28, letterSpacing: -0.3 },
-  p: { marginTop: 10, maxWidth: 900, opacity: 0.84, lineHeight: 1.75 },
-
-  steps: { marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 },
-  step: {
-    borderRadius: 22,
-    padding: 18,
+    padding: "7px 10px",
+    borderRadius: 999,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
+    opacity: 0.9,
   },
-  stepNum: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    display: "grid",
-    placeItems: "center",
+  demoGrid: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 },
+  demoBox: {
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(0,0,0,0.16)",
+    border: "1px solid rgba(255,255,255,0.10)",
+  },
+  demoLabel: { fontSize: 11, opacity: 0.7, fontWeight: 900, textTransform: "uppercase" },
+  demoStrong: { marginTop: 8, fontWeight: 950, fontSize: 12 },
+  demoText: { marginTop: 6, opacity: 0.82, fontSize: 12, lineHeight: 1.5 },
+  demoSmall: { marginTop: 10, opacity: 0.6, fontSize: 12 },
+  demoBottom: { marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  demoHint: { opacity: 0.75, fontSize: 12, lineHeight: 1.4 },
+  demoBtn: {
+    border: "none",
+    padding: "10px 14px",
+    borderRadius: 14,
     fontWeight: 950,
-    color: "#031016",
-    background: `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.c} 60%, ${PALETTE.d} 100%)`,
-    marginBottom: 10,
+    fontSize: 12,
+    color: "#041015",
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.b} 25%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
-  stepTitle: { fontWeight: 950, letterSpacing: -0.2 },
-  stepText: { marginTop: 6, opacity: 0.82, lineHeight: 1.6, fontSize: 13 },
 
-  scoreWrap: { marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "start" },
+  section: { padding: "18px 18px 34px" },
+  sectionInner: { maxWidth: 1180, margin: "0 auto" },
+  sectionHead: { maxWidth: 920 },
+  h2: { margin: 0, fontSize: 26, letterSpacing: -0.2 },
+  p: { marginTop: 10, opacity: 0.84, lineHeight: 1.75, fontSize: 13 },
+
+  scoreWrap: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "start" },
   scoreLeft: {
     borderRadius: 22,
     padding: 18,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
+    boxShadow: "0 24px 90px rgba(0,0,0,0.35)",
   },
   scoreRight: {
     borderRadius: 22,
     padding: 18,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
+    boxShadow: "0 24px 90px rgba(0,0,0,0.35)",
     minHeight: 270,
   },
-  label: { fontSize: 12, fontWeight: 900, opacity: 0.85 },
+  label: { fontSize: 12, fontWeight: 950, opacity: 0.88 },
   textarea: {
     marginTop: 8,
     width: "100%",
-    minHeight: 170,
+    minHeight: 160,
     resize: "vertical",
     borderRadius: 16,
     padding: "12px 14px",
@@ -843,7 +933,7 @@ const S: Record<string, CSSProperties> = {
     lineHeight: 1.6,
   },
   scoreBtns: { marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" },
-  miniNote: { marginTop: 10, fontSize: 12, opacity: 0.7 },
+  tinyMuted: { marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.55 },
 
   scoreEmpty: { display: "grid", gap: 8 },
   scoreEmptyTitle: { fontWeight: 950, fontSize: 16 },
@@ -852,13 +942,13 @@ const S: Record<string, CSSProperties> = {
   scoreCard: { display: "grid", gap: 12 },
   scoreTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 },
   scoreTitle: { fontWeight: 950, fontSize: 16 },
-  scoreBig: { fontWeight: 950, fontSize: 26, color: PALETTE.a },
+  scoreBig: { fontWeight: 950, fontSize: 26, color: P.a },
 
   barBg: { height: 10, borderRadius: 999, background: "rgba(255,255,255,0.10)", overflow: "hidden" },
   barFill: {
     height: "100%",
     borderRadius: 999,
-    background: `linear-gradient(90deg, ${PALETTE.c} 0%, ${PALETTE.a} 35%, ${PALETTE.d} 100%)`,
+    background: `linear-gradient(90deg, ${P.c} 0%, ${P.a} 35%, ${P.d} 100%)`,
   },
   subRows: { display: "grid", gap: 10, marginTop: 4 },
   row: {
@@ -875,22 +965,43 @@ const S: Record<string, CSSProperties> = {
     width: 10,
     height: 10,
     borderRadius: 999,
-    background: `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.d} 100%)`,
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.d} 100%)`,
   },
-  rowLabel: { fontWeight: 900, fontSize: 13, opacity: 0.9 },
+  rowLabel: { fontWeight: 950, fontSize: 13, opacity: 0.92 },
   rowRight: { fontWeight: 950, fontSize: 13, opacity: 0.85 },
   scoreHint: { opacity: 0.78, fontSize: 13, lineHeight: 1.6 },
 
-  pricingHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
-  tierGrid: { marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 },
+  prelaunchPill: {
+    marginTop: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "9px 12px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 950,
+    color: "#bffcff",
+    background: "rgba(0,0,0,0.20)",
+    border: "1px solid rgba(255,255,255,0.10)",
+  },
+  dotSmall: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.c} 60%, ${P.d} 100%)`,
+    boxShadow: "0 0 16px rgba(2,243,220,0.45)",
+  },
 
+  tierGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 },
   tierCard: {
     borderRadius: 22,
     padding: 18,
     background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
     display: "flex",
     flexDirection: "column",
     minHeight: 560,
+    backdropFilter: "blur(12px)",
   },
   tierTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
   tierName: { fontWeight: 950, fontSize: 16 },
@@ -901,7 +1012,7 @@ const S: Record<string, CSSProperties> = {
     borderRadius: 999,
     background: "rgba(0,0,0,0.18)",
     fontSize: 12,
-    fontWeight: 900,
+    fontWeight: 950,
   },
   popPill: {
     fontSize: 11,
@@ -915,11 +1026,12 @@ const S: Record<string, CSSProperties> = {
   },
 
   priceRow: { marginTop: 12, display: "flex", alignItems: "baseline", gap: 8 },
-  price: { fontSize: 40, fontWeight: 950, letterSpacing: -1.1 },
-  period: { fontSize: 13, opacity: 0.75, fontWeight: 900 },
+  price: { fontSize: 42, fontWeight: 950, letterSpacing: -1.1 },
+  period: { fontSize: 13, opacity: 0.75, fontWeight: 950 },
   desc: { marginTop: 10, opacity: 0.84, fontSize: 13, lineHeight: 1.7 },
+
   hr: { marginTop: 14, height: 1, background: "rgba(255,255,255,0.12)" },
-  blockTitle: { marginTop: 14, fontSize: 12, fontWeight: 950, opacity: 0.9 },
+  blockTitle: { marginTop: 14, fontSize: 12, fontWeight: 950, opacity: 0.92 },
   list: { margin: "10px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 10 },
   li: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, opacity: 0.9, lineHeight: 1.55 },
   bullet: { width: 9, height: 9, borderRadius: 999, marginTop: 6, flex: "0 0 9px" },
@@ -938,15 +1050,14 @@ const S: Record<string, CSSProperties> = {
     gap: 12,
     flexWrap: "wrap",
   },
-  footerLinks: { display: "flex", gap: 12, alignItems: "center" },
-  footerLink: { color: "#eaf0ff", opacity: 0.82, textDecoration: "none", fontWeight: 800, fontSize: 12 },
-  footerBtn: {
+  footerLinks: { display: "flex", gap: 10, alignItems: "center" },
+  footerLinkBtn: {
     border: "none",
     background: "transparent",
     color: "#eaf0ff",
     opacity: 0.82,
     cursor: "pointer",
-    fontWeight: 800,
+    fontWeight: 900,
     fontSize: 12,
   },
 
@@ -965,7 +1076,7 @@ const S: Record<string, CSSProperties> = {
     maxWidth: 520,
     borderRadius: 24,
     padding: 16,
-    background: "rgba(14,18,30,0.88)",
+    background: "rgba(14,18,30,0.90)",
     border: "1px solid rgba(255,255,255,0.14)",
     boxShadow: "0 45px 140px rgba(0,0,0,0.7)",
   },
@@ -998,12 +1109,11 @@ const S: Record<string, CSSProperties> = {
     padding: "12px 14px",
     fontWeight: 950,
     fontSize: 13,
-    color: "#031016",
-    background: `linear-gradient(135deg, ${PALETTE.a} 0%, ${PALETTE.b} 25%, ${PALETTE.e} 45%, ${PALETTE.c} 70%, ${PALETTE.d} 100%)`,
+    color: "#041015",
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.b} 25%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`,
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
   },
-  tinyMuted: { marginTop: 4, fontSize: 12, opacity: 0.7, lineHeight: 1.55 },
-  errorText: { fontSize: 12, color: "rgba(255,120,150,1)", fontWeight: 900 },
+  errorText: { fontSize: 12, color: "rgba(255,120,150,1)", fontWeight: 950 },
 
   successBox: { marginTop: 14, display: "grid", gap: 10 },
   successTitle: { fontSize: 18, fontWeight: 950 },
@@ -1014,8 +1124,8 @@ const S: Record<string, CSSProperties> = {
     padding: "12px 14px",
     fontWeight: 950,
     fontSize: 13,
-    color: "#031016",
-    background: `linear-gradient(135deg, ${PALETTE.d} 0%, ${PALETTE.a} 40%, ${PALETTE.c} 100%)`,
+    color: "#041015",
+    background: `linear-gradient(135deg, ${P.d} 0%, ${P.a} 40%, ${P.c} 100%)`,
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
     cursor: "pointer",
   },
