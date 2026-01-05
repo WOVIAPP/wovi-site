@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 
 type PlanId = "free" | "growth" | "pro";
@@ -108,6 +108,79 @@ function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 }
 
+/** Small “rewrite engine” for demo (until you plug in real AI). */
+function generateBetterCaption(input: string) {
+  const t = input.trim();
+  const lines = t.split("\n").map((x) => x.trim()).filter(Boolean);
+  const base = lines.join(" ");
+
+  // Heuristics
+  const hasQuestion = /\?/.test(base);
+  const hasCTA = /(call|book|order|join|dm|link|tap|click|sign up|try|get started|follow|comment|shop|learn more)/i.test(
+    base
+  );
+  const hasTime = /(today|tonight|this week|weekend|now|limited|ends|48 hours|24 hours|deadline)/i.test(
+    base
+  );
+  const hasOffer = /(free|deal|special|limited|%|off|discount|bonus|giveaway)/i.test(
+    base
+  );
+
+  // Clean up: remove excessive punctuation, keep punchy.
+  const cleaned = base.replace(/\s+/g, " ").replace(/—/g, "-").trim();
+
+  // Universal hook options
+  const hookOptions = [
+    "Quick question for business owners:",
+    "If you’re building a business, read this:",
+    "Be honest — are you posting consistently?",
+    "This is how small brands win online:",
+    "Stop guessing what to post:",
+  ];
+
+  const hook =
+    hasQuestion ? "Quick question:" : hookOptions[Math.floor(Math.random() * hookOptions.length)];
+
+  const ctaOptions = [
+    "Comment “WOVI” and I’ll send the waitlist link.",
+    "Reply “PLAN” and I’ll share a weekly posting plan template.",
+    "Want early access? Join the waitlist — link in bio.",
+    "DM “AI” for early access when public beta drops.",
+    "Join the waitlist to get early access at launch.",
+  ];
+
+  const cta = hasCTA ? "" : ctaOptions[Math.floor(Math.random() * ctaOptions.length)];
+
+  const urgency = hasTime
+    ? ""
+    : hasOffer
+      ? "Early access spots are limited."
+      : "Public beta is launching in small batches.";
+
+  // Build improved caption
+  const improved = [
+    `${hook}`,
+    "",
+    cleaned.endsWith(".") || cleaned.endsWith("!") || cleaned.endsWith("?")
+      ? cleaned
+      : cleaned + ".",
+    "",
+    urgency,
+    cta ? cta : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  // Suggestions
+  const suggestions: string[] = [];
+  if (!hasQuestion) suggestions.push("Add a question to increase comments.");
+  if (!hasOffer) suggestions.push("Add a simple offer (free guide, limited spots, etc.).");
+  if (!hasTime) suggestions.push("Add a timeframe (today / this week / limited batches).");
+  if (!hasCTA) suggestions.push("Add a clear CTA (comment / DM / join waitlist).");
+
+  return { improved, suggestions };
+}
+
 export default function Page() {
   // Waitlist modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -125,6 +198,10 @@ export default function Page() {
     { label: string; value: number; max: number }[]
   >([]);
   const [analyzing, setAnalyzing] = useState(false);
+
+  const [improvedCaption, setImprovedCaption] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const selectedTier = useMemo(() => {
     if (!selectedPlan) return null;
@@ -154,6 +231,27 @@ export default function Page() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [modalOpen, scoreOpen]);
 
+  // Scroll reveal (no libraries)
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll("[data-reveal]")) as HTMLElement[];
+    if (!els.length) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            (en.target as HTMLElement).classList.add("reveal-in");
+            io.unobserve(en.target);
+          }
+        });
+      },
+      { threshold: 0.18, rootMargin: "0px 0px -60px 0px" }
+    );
+
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   async function submitWaitlist(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg("");
@@ -167,8 +265,6 @@ export default function Page() {
 
     setSubmitting(true);
     try {
-      // If you later build /api/waitlist, it will work.
-      // For now, we still show success even if API isn't there.
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -194,22 +290,29 @@ export default function Page() {
 
     setAnalyzing(true);
     setScoreOpen(true);
+    setCopied(false);
 
     setTimeout(() => {
       // Demo scoring heuristic until backend exists
       const len = t.length;
       const hasQuestion = /\?/.test(t);
-      const hasCta = /(call|book|order|join|dm|link|tap|click|sign up|try|get started|follow|comment)/i.test(
+      const hasCta = /(call|book|order|join|dm|link|tap|click|sign up|try|get started|follow|comment|shop|learn more)/i.test(
         t
       );
       const hasNumbers = /\d/.test(t);
       const hasEmoji = /[\u{1F300}-\u{1FAFF}]/u.test(t);
-      const hasOffer = /(free|deal|special|limited|today|this week|%|off|discount)/i.test(
+      const hasOffer = /(free|deal|special|limited|today|this week|%|off|discount|bonus|giveaway)/i.test(
+        t
+      );
+      const hasTime = /(today|tonight|this week|weekend|now|limited|ends|24 hours|48 hours)/i.test(
         t
       );
 
       const hook = clamp(
-        (hasQuestion ? 18 : 10) + (hasNumbers ? 10 : 0) + (hasEmoji ? 6 : 0) + (hasOffer ? 6 : 0),
+        (hasQuestion ? 18 : 10) +
+          (hasNumbers ? 10 : 0) +
+          (hasEmoji ? 6 : 0) +
+          (hasOffer ? 6 : 0),
         0,
         35
       );
@@ -217,7 +320,10 @@ export default function Page() {
       const cta = clamp((hasCta ? 21 : 8) + (len > 45 ? 4 : 0), 0, 25);
       const voice = clamp(8 + (/(we|our|you|your)/i.test(t) ? 7 : 4), 0, 15);
 
-      const total = clamp(hook + clarity + cta + voice, 0, 100);
+      // Small bump if time-based urgency exists
+      const urgencyBump = hasTime ? 4 : 0;
+
+      const total = clamp(hook + clarity + cta + voice + urgencyBump, 0, 100);
 
       setScore(total);
       setSubscores([
@@ -226,12 +332,38 @@ export default function Page() {
         { label: "Call-to-Action", value: cta, max: 25 },
         { label: "Brand Voice", value: voice, max: 15 },
       ]);
+
+      const { improved, suggestions } = generateBetterCaption(t);
+      setImprovedCaption(improved);
+      setSuggestions(suggestions);
+
       setAnalyzing(false);
-    }, 600);
+    }, 650);
   }
+
+  async function copyImproved() {
+    try {
+      await navigator.clipboard.writeText(improvedCaption);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // ignore
+    }
+  }
+
+  const examplePlaceholder = `Example (any business):
+“New service is live this week.
+If you want the details, comment ‘INFO’ and I’ll send it.”
+
+Or:
+“We’re taking 5 new clients this month.
+Want early access? Join the waitlist.”`;
 
   return (
     <main style={S.page}>
+      {/* Global styles for reveal + underline animations */}
+      <style>{CSS_GLOBAL}</style>
+
       {/* Background */}
       <div style={S.bg} aria-hidden="true">
         <div style={S.grid} />
@@ -273,7 +405,7 @@ export default function Page() {
       </header>
 
       {/* HERO */}
-      <section id="top" style={S.hero}>
+      <section id="top" style={S.hero} data-reveal>
         <div style={S.heroGrid}>
           {/* Left card */}
           <div style={S.heroCard}>
@@ -284,7 +416,11 @@ export default function Page() {
 
             <h1 style={S.h1}>
               AI that turns your business goals into{" "}
-              <span style={S.gradText}>ready-to-post</span> content.
+              <span className="wovi-underline">
+                ready-to-post
+                <span className="wovi-underline-line" aria-hidden="true" />
+              </span>{" "}
+              content.
             </h1>
 
             <p style={S.sub}>
@@ -305,7 +441,7 @@ export default function Page() {
               <div style={S.miniCard}>
                 <div style={S.miniLabel}>Works for</div>
                 <div style={S.miniTitle}>Any industry</div>
-                <div style={S.miniText}>Restaurants, HVAC, ecom, creators, startups</div>
+                <div style={S.miniText}>Local, online, service, ecom, creators, startups</div>
               </div>
               <div style={S.miniCard}>
                 <div style={S.miniLabel}>Replaces</div>
@@ -330,8 +466,8 @@ export default function Page() {
             <div style={S.demoGrid}>
               <div style={S.demoBox}>
                 <div style={S.demoLabel}>Input</div>
-                <div style={S.demoStrong}>Promotion:</div>
-                <div style={S.demoText}>“New winter special”</div>
+                <div style={S.demoStrong}>Goal:</div>
+                <div style={S.demoText}>“Get more bookings this week”</div>
                 <div style={S.demoSmall}>Tone: confident · modern</div>
               </div>
 
@@ -365,13 +501,12 @@ export default function Page() {
       </section>
 
       {/* Post Score */}
-      <section style={S.section}>
+      <section style={S.section} data-reveal>
         <div style={S.sectionInner}>
           <div style={S.sectionHead}>
-            <h2 style={S.h2}>Rate your post with AI (Post Score)</h2>
+            <h2 style={S.h2}>Post Score</h2>
             <p style={S.p}>
-              Paste a caption (or post idea). Wovi scores it for hook, clarity, CTA, and brand voice —
-              then you’ll generate better versions at launch.
+              Paste a caption. Wovi rates it (hook, clarity, CTA, voice) — then generates a stronger version.
             </p>
           </div>
 
@@ -382,7 +517,7 @@ export default function Page() {
                 style={S.textarea}
                 value={postText}
                 onChange={(e) => setPostText(e.target.value)}
-                placeholder={`Example:\n“Middle TN — what’s your go-to BBQ order? 👀\nWe’re back Jan 13th. Tap follow so you don’t miss it.”\n\nOr:\n“New winter special is live. Comment ‘MENU’ and we’ll DM it.”`}
+                placeholder={examplePlaceholder}
               />
 
               <div style={S.scoreBtns}>
@@ -398,6 +533,8 @@ export default function Page() {
                   onClick={() => {
                     setPostText("");
                     setScoreOpen(false);
+                    setImprovedCaption("");
+                    setSuggestions([]);
                   }}
                 >
                   Clear
@@ -441,8 +578,50 @@ export default function Page() {
                     ))}
                   </div>
 
+                  {/* Improved caption output */}
+                  <div style={S.rewriteBlock}>
+                    <div style={S.rewriteTop}>
+                      <div style={S.rewriteTitle}>Improved caption</div>
+                      <button
+                        style={{
+                          ...S.copyBtn,
+                          opacity: improvedCaption ? 1 : 0.6,
+                          cursor: improvedCaption ? "pointer" : "not-allowed",
+                        }}
+                        onClick={copyImproved}
+                        disabled={!improvedCaption}
+                      >
+                        {copied ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+
+                    <div style={S.rewriteBox}>
+                      {improvedCaption ? (
+                        <pre style={S.rewritePre}>{improvedCaption}</pre>
+                      ) : (
+                        <div style={{ opacity: 0.75, fontSize: 13 }}>
+                          Generate a score to see an improved version.
+                        </div>
+                      )}
+                    </div>
+
+                    {suggestions.length ? (
+                      <div style={S.suggestWrap}>
+                        <div style={S.suggestTitle}>Quick fixes to increase performance</div>
+                        <ul style={S.suggestList}>
+                          {suggestions.slice(0, 4).map((x) => (
+                            <li key={x} style={S.suggestLi}>
+                              <span style={S.suggestDot} />
+                              <span>{x}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+
                   <div style={S.scoreHint}>
-                    Want the score + auto rewrites + a weekly plan? Join the waitlist.
+                    Want auto rewrites + a weekly plan + daily posts? Join the waitlist.
                   </div>
 
                   <button style={S.navCta} onClick={() => openWaitlist()}>
@@ -456,7 +635,7 @@ export default function Page() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={S.section}>
+      <section id="pricing" style={S.section} data-reveal>
         <div style={S.sectionInner}>
           <h2 style={S.h2}>WOVI Pricing Plans</h2>
           <p style={S.p}>
@@ -472,12 +651,12 @@ export default function Page() {
             {TIERS.map((t) => (
               <div
                 key={t.id}
+                className={`tier-card ${t.highlight ? "tier-card--highlight" : ""}`}
                 style={{
                   ...S.tierCard,
                   border: t.highlight
                     ? `1px solid rgba(2,243,220,0.55)`
                     : `1px solid rgba(255,255,255,0.12)`,
-                  boxShadow: t.highlight ? "0 40px 120px rgba(0,0,0,0.65)" : "none",
                 }}
               >
                 <div style={S.tierTop}>
@@ -494,7 +673,7 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* FIX: only ONE Most Popular (not 2) */}
+                  {/* Only one Most Popular */}
                   {t.highlight ? <div style={S.popPill}>Most Popular</div> : null}
                 </div>
 
@@ -541,7 +720,7 @@ export default function Page() {
         </div>
       </section>
 
-      <footer style={S.footer}>
+      <footer style={S.footer} data-reveal>
         <div style={{ opacity: 0.8 }}>© {new Date().getFullYear()} Wovi</div>
         <div style={S.footerLinks}>
           <button style={S.footerLinkBtn} onClick={() => scrollToId("pricing")}>
@@ -634,6 +813,61 @@ export default function Page() {
   );
 }
 
+const CSS_GLOBAL = `
+/* Reveal animation */
+[data-reveal]{
+  opacity: 0;
+  transform: translateY(14px) scale(0.99);
+  transition: opacity 650ms ease, transform 650ms ease;
+  will-change: opacity, transform;
+}
+.reveal-in{
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+}
+
+/* Animated underline on ready-to-post */
+.wovi-underline{
+  position: relative;
+  display: inline-block;
+  background: linear-gradient(90deg, ${P.a} 0%, ${P.b} 25%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.wovi-underline-line{
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 3px;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, ${P.a}, ${P.b}, ${P.e}, ${P.c}, ${P.d});
+  background-size: 250% 100%;
+  animation: woviGradientMove 2.4s linear infinite;
+  opacity: 0.95;
+  box-shadow: 0 0 22px rgba(2,243,220,0.35);
+}
+@keyframes woviGradientMove{
+  0%{ background-position: 0% 50%; }
+  100%{ background-position: 100% 50%; }
+}
+
+/* Pricing hover glow */
+.tier-card{
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+.tier-card:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 40px 140px rgba(0,0,0,0.65);
+  border-color: rgba(2,243,220,0.28);
+}
+.tier-card--highlight:hover{
+  box-shadow: 0 55px 170px rgba(0,0,0,0.72);
+}
+`;
+
+/* Styles */
 const S: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
@@ -793,12 +1027,6 @@ const S: Record<string, CSSProperties> = {
   },
 
   h1: { margin: "16px 0 10px", fontSize: 54, lineHeight: 1.06, letterSpacing: -1.2 },
-  gradText: {
-    background: `linear-gradient(90deg, ${P.a} 0%, ${P.b} 20%, ${P.e} 45%, ${P.c} 70%, ${P.d} 100%)`,
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-  },
   sub: { margin: "0", maxWidth: 760, fontSize: 14, lineHeight: 1.85, opacity: 0.84 },
 
   heroCtas: { marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" },
@@ -969,6 +1197,58 @@ const S: Record<string, CSSProperties> = {
   },
   rowLabel: { fontWeight: 950, fontSize: 13, opacity: 0.92 },
   rowRight: { fontWeight: 950, fontSize: 13, opacity: 0.85 },
+
+  rewriteBlock: {
+    marginTop: 4,
+    borderRadius: 18,
+    padding: 12,
+    background: "rgba(0,0,0,0.18)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    display: "grid",
+    gap: 10,
+  },
+  rewriteTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  rewriteTitle: { fontWeight: 950, fontSize: 13, opacity: 0.92 },
+  copyBtn: {
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "#eaf0ff",
+    borderRadius: 12,
+    padding: "8px 10px",
+    fontWeight: 950,
+    fontSize: 12,
+  },
+  rewriteBox: {
+    borderRadius: 16,
+    padding: "10px 12px",
+    background: "rgba(0,0,0,0.22)",
+    border: "1px solid rgba(255,255,255,0.12)",
+  },
+  rewritePre: {
+    margin: 0,
+    whiteSpace: "pre-wrap",
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: "#eaf0ff",
+    opacity: 0.92,
+    fontFamily:
+      'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
+  },
+
+  suggestWrap: { display: "grid", gap: 8 },
+  suggestTitle: { fontWeight: 950, fontSize: 12, opacity: 0.88, textTransform: "uppercase" },
+  suggestList: { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 },
+  suggestLi: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, opacity: 0.9, lineHeight: 1.55 },
+  suggestDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+    marginTop: 6,
+    background: `linear-gradient(135deg, ${P.a} 0%, ${P.c} 55%, ${P.d} 100%)`,
+    boxShadow: "0 0 16px rgba(2,243,220,0.25)",
+    flex: "0 0 9px",
+  },
+
   scoreHint: { opacity: 0.78, fontSize: 13, lineHeight: 1.6 },
 
   prelaunchPill: {
