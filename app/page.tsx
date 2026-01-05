@@ -1,4 +1,8 @@
-// app/page.tsx
+/* ================================
+   FILE: app/page.tsx
+   ACTION: REPLACE the entire file with this
+   ================================ */
+
 "use client";
 
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -6,540 +10,545 @@ import React, { CSSProperties, useEffect, useMemo, useRef, useState } from "reac
 type PlanKey = "free" | "growth" | "pro";
 
 export default function Page() {
-  // ===== Plan selection rules =====
-  // Default plan is Free unless user explicitly clicks Growth/Pro.
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>("free");
-  const [userPickedPlan, setUserPickedPlan] = useState(false);
+  const S: Record<string, CSSProperties> = styles;
 
-  // Waitlist modal
-  const [showWaitlist, setShowWaitlist] = useState(false);
+  // ---- Waitlist modal state ----
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>("free"); // default to Free Trial
   const [email, setEmail] = useState("");
-  const [waitlistState, setWaitlistState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [joinState, setJoinState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // Post score demo
-  const [caption, setCaption] = useState("");
-  const [scoreState, setScoreState] = useState<"idle" | "scored">("idle");
-  const [score, setScore] = useState<number>(0);
-  const [breakdown, setBreakdown] = useState<{ hook: number; clarity: number; cta: number; voice: number }>({
-    hook: 0,
-    clarity: 0,
-    cta: 0,
-    voice: 0,
-  });
+  // ---- Post score demo state ----
+  const [captionInput, setCaptionInput] = useState("");
+  const [score, setScore] = useState<number | null>(null);
+  const [scoreBreakdown, setScoreBreakdown] = useState<{ hook: number; clarity: number; cta: number; voice: number } | null>(
+    null
+  );
   const [improvedCaption, setImprovedCaption] = useState<string>("");
+  const [scoreHint, setScoreHint] = useState<string>("Paste a caption and press “Get score”.");
 
-  // Swipeable score results (mobile)
+  // Swipe container ref (mobile)
   const swipeRef = useRef<HTMLDivElement | null>(null);
 
-  const openWaitlistDefaultFree = () => {
-    // If they never clicked a plan, force Free.
-    if (!userPickedPlan) setSelectedPlan("free");
-    setWaitlistState("idle");
-    setShowWaitlist(true);
-  };
+  // ---- Inject CSS string (keeps your current approach) ----
+  const globalCss = useMemo(
+    () => `
+:root{
+  color-scheme: dark;
+}
 
-  const openWaitlistForPlan = (plan: PlanKey) => {
-    setSelectedPlan(plan);
-    setUserPickedPlan(true);
-    setWaitlistState("idle");
-    setShowWaitlist(true);
-  };
+html, body{
+  background: #05070b;
+  margin: 0;
+  padding: 0;
+}
 
-  const closeWaitlist = () => {
-    setShowWaitlist(false);
-    setWaitlistState("idle");
-  };
+*{ box-sizing: border-box; }
 
-  const planLabel = useMemo(() => {
-    return selectedPlan === "free" ? "Free Trial" : selectedPlan === "growth" ? "Growth" : "Pro";
-  }, [selectedPlan]);
+::selection{
+  background: rgba(2,243,220,0.25);
+}
 
-  // ===== Simple caption scoring (client-side demo, no AI keys needed) =====
-  function computeScore(text: string) {
-    const t = (text || "").trim();
-    if (!t) {
-      return { score: 0, hook: 0, clarity: 0, cta: 0, voice: 0, improved: "" };
+/* background grid */
+.woviBg{
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1100px 700px at 20% 15%, rgba(2,243,220,0.16), transparent 60%),
+    radial-gradient(900px 600px at 85% 20%, rgba(33,174,245,0.16), transparent 55%),
+    radial-gradient(800px 560px at 65% 85%, rgba(87,254,114,0.12), transparent 55%),
+    linear-gradient(180deg, #05070b 0%, #05070b 55%, #05070b 100%);
+}
+
+.woviGrid{
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 58px 58px;
+  mask-image: radial-gradient(70% 70% at 55% 20%, black 50%, transparent 85%);
+  opacity: 0.9;
+}
+
+.woviStars{
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 1px, transparent 1px),
+    radial-gradient(circle at 60% 70%, rgba(255,255,255,0.06) 1px, transparent 1px),
+    radial-gradient(circle at 80% 40%, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 240px 240px, 320px 320px, 420px 420px;
+  opacity: 0.35;
+  filter: blur(0.2px);
+  mask-image: radial-gradient(70% 70% at 50% 30%, black 55%, transparent 90%);
+}
+
+/* animated underline for ready-to-post */
+.readyUnderline{
+  position: relative;
+  display: inline-block;
+}
+.readyUnderline:after{
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%);
+  background-size: 220% 100%;
+  animation: glowflow 2.8s linear infinite;
+  opacity: 0.95;
+  box-shadow: 0 0 20px rgba(2,243,220,0.25);
+}
+@keyframes glowflow{
+  0%{ background-position: 0% 50%; }
+  100%{ background-position: 220% 50%; }
+}
+
+/* hover glow for pricing cards */
+.planCard{
+  transition: transform 160ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+.planCard:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 26px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07) inset;
+  border-color: rgba(2,243,220,0.22) !important;
+}
+
+/* scroll reveal */
+.reveal{
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 650ms ease, transform 650ms ease;
+}
+.reveal.revealed{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Modal */
+.modalBackdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.62);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.modalPanel{
+  width: min(720px, 96vw);
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: radial-gradient(900px 420px at 30% 10%, rgba(2,243,220,0.10), transparent 55%),
+              radial-gradient(700px 420px at 80% 0%, rgba(33,174,245,0.10), transparent 60%),
+              rgba(10,12,16,0.85);
+  box-shadow: 0 35px 120px rgba(0,0,0,0.72);
+  overflow: hidden;
+}
+.modalHeader{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.modalBody{
+  padding: 16px;
+}
+.modalClose{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.modalClose:active{
+  transform: translateY(1px);
+}
+
+/* Sticky mobile CTA */
+@media (max-width: 820px) {
+  .mobileStickyCta{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(5,7,11,0) 0%, rgba(5,7,11,0.92) 25%, rgba(5,7,11,0.98) 100%);
+    backdrop-filter: blur(14px);
+    z-index: 60;
+  }
+  .mobileStickyCtaInner{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .mobileStickyBtn{
+    min-height: 48px; /* Apple HIG tap size */
+    border-radius: 14px;
+    border: 1px solid rgba(2,243,220,0.35);
+    background: linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%);
+    color: #041015;
+    font-weight: 950;
+    font-size: 14px;
+    letter-spacing: 0.2px;
+    box-shadow: 0 18px 55px rgba(0,0,0,0.45);
+    cursor: pointer;
+  }
+  .mobileStickySub{
+    font-size: 12px;
+    opacity: 0.75;
+    text-align: center;
+  }
+}
+
+/* Mobile grid fixes */
+@media (max-width: 980px) {
+  .heroGridMobileFix{ grid-template-columns: 1fr !important; gap: 16px !important; }
+  .pricingGridMobileFix{ grid-template-columns: 1fr !important; }
+  .scoreGridMobileFix{ grid-template-columns: 1fr !important; }
+}
+
+/* ===== Post Score mobile fix (prevents overflow) ===== */
+.postScoreMobileFix,
+.postScoreMobileFix *{
+  max-width: 100%;
+}
+
+html, body{
+  overflow-x: hidden;
+}
+
+@media (max-width: 980px){
+  .postScoreMobileFix{
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .postScoreMobileFix .swipeRow{
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 12px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .postScoreMobileFix .swipeCard{
+    flex: 0 0 88% !important;
+    min-width: 88% !important;
+    scroll-snap-align: start !important;
+  }
+
+  .postScoreMobileFix textarea{
+    width: 100% !important;
+  }
+}
+
+/* iPhone vs Android font tuning (safe, light touch) */
+@supports (-webkit-touch-callout: none) {
+  /* iOS */
+  .iosH1{ font-size: clamp(34px, 7.8vw, 54px) !important; line-height: 1.05 !important; }
+}
+@supports not (-webkit-touch-callout: none) {
+  /* most Android */
+  .androidH1{ font-size: clamp(32px, 7.2vw, 52px) !important; line-height: 1.08 !important; }
+}
+`,
+    []
+  );
+
+  // Inject <style>
+  useEffect(() => {
+    const id = "wovi-inline-css";
+    let tag = document.getElementById(id) as HTMLStyleElement | null;
+    if (!tag) {
+      tag = document.createElement("style");
+      tag.id = id;
+      document.head.appendChild(tag);
     }
+    tag.textContent = globalCss;
+  }, [globalCss]);
 
-    const lower = t.toLowerCase();
-    const words = t.split(/\s+/).filter(Boolean);
-    const length = t.length;
+  // Scroll reveal
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll(".reveal"));
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) e.target.classList.add("revealed");
+        });
+      },
+      { threshold: 0.12 }
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
-    // Hook signals
-    const hookSignals = [
-      /\?/,
-      /today\b/,
-      /this week\b/,
-      /new\b/,
-      /launch\b/,
-      /limited\b/,
-      /free\b/,
-      /now\b/,
-      /stop\b/,
-      /don’t\b|don't\b/,
-      /secret\b/,
-      /here’s\b|heres\b/,
-      /3\b|three\b/,
-      /5\b|five\b/,
-    ];
-    const hookHits = hookSignals.reduce((acc, r) => (r.test(lower) ? acc + 1 : acc), 0);
-
-    // CTA signals
-    const ctaSignals = [
-      /call\b/,
-      /dm\b/,
-      /message\b/,
-      /book\b/,
-      /order\b/,
-      /sign up\b|signup\b/,
-      /join\b/,
-      /click\b/,
-      /tap\b/,
-      /try\b/,
-      /get started\b/,
-      /link in bio\b/,
-      /comment\b/,
-    ];
-    const ctaHits = ctaSignals.reduce((acc, r) => (r.test(lower) ? acc + 1 : acc), 0);
-
-    // Clarity heuristics: short sentences + specifics
-    const hasNumber = /\d/.test(t);
-    const hasTime = /\b(am|pm|today|tomorrow|mon|tue|wed|thu|fri|sat|sun)\b/.test(lower);
-    const hasOffer = /\b(off|%|discount|deal|special|bundle|bonus)\b/.test(lower);
-
-    // Voice: punctuation + emojis + rhythm
-    const emojiCount = (t.match(/[\u{1F300}-\u{1FAFF}]/gu) || []).length;
-    const hasLineBreaks = t.includes("\n");
-    const hasEnergy = /!/.test(t) || emojiCount > 0;
-
-    let hook = Math.min(35, hookHits * 7 + (hasEnergy ? 5 : 0));
-    let cta = Math.min(25, ctaHits * 8 + (ctaHits > 0 ? 5 : 0));
-    let clarity = 0;
-
-    // Clarity scoring
-    clarity += length >= 40 && length <= 220 ? 18 : length <= 300 ? 12 : 6;
-    clarity += hasNumber ? 5 : 0;
-    clarity += hasTime ? 4 : 0;
-    clarity += hasOffer ? 4 : 0;
-    clarity += words.length >= 8 && words.length <= 45 ? 4 : 0;
-
-    clarity = Math.min(25, clarity);
-
-    let voice = 0;
-    voice += hasLineBreaks ? 5 : 2;
-    voice += Math.min(6, emojiCount * 2);
-    voice += hasEnergy ? 5 : 2;
-    voice += /you\b|your\b/.test(lower) ? 6 : 3;
-    voice += /\bwe\b|\bour\b/.test(lower) ? 6 : 3;
-    voice = Math.min(15, voice);
-
-    // Total out of 100 (35 + 25 + 25 + 15)
-    const total = Math.max(0, Math.min(100, Math.round(hook + clarity + cta + voice)));
-
-    // Build an improved caption (generic for any business)
-    const improved =
-      buildImprovedCaption(t) ||
-      "Quick update:\n\n✅ What’s new this week\n✅ Why it matters to customers\n✅ What to do next (comment, DM, book, order)\n\nWant Wovi to generate this for you every week? Join the waitlist.";
-
-    return { score: total, hook, clarity, cta, voice, improved };
-  }
-
-  function buildImprovedCaption(original: string) {
-    const t = original.trim();
-    if (!t) return "";
-
-    // If already has clear CTA, keep structure but improve clarity/format
-    const lower = t.toLowerCase();
-    const hasCTA = /\b(call|dm|message|book|order|sign up|join|click|tap|get started|link in bio|comment)\b/.test(lower);
-
-    // Make it more universal (not BBQ-specific), add structure
-    const openerOptions = [
-      "Quick question:",
-      "Heads up:",
-      "New this week:",
-      "If you’ve been meaning to post…",
-      "One update for your customers today:",
-    ];
-    const opener = openerOptions[Math.floor(Math.random() * openerOptions.length)];
-
-    const ctaLine = hasCTA
-      ? "If you want help making posts like this consistently, join the Wovi waitlist."
-      : "Reply “WOVI” or join the waitlist to get early access when public beta launches.";
-
-    // Keep the original as raw content, but restructure
-    return `${opener}\n\n${t}\n\n—\n\n✅ Clear offer\n✅ Clear benefit\n✅ Clear next step\n\n${ctaLine}`;
-  }
-
-  const handleGetScore = () => {
-    const r = computeScore(caption);
-    setScore(r.score);
-    setBreakdown({ hook: r.hook, clarity: r.clarity, cta: r.cta, voice: r.voice });
-    setImprovedCaption(r.improved);
-    setScoreState("scored");
-
-    // On mobile, snap to results panel automatically
+  // Swipe tracking (optional)
+  useEffect(() => {
     const el = swipeRef.current;
-    if (el) {
-      // scroll to first card (results)
-      const cards = el.querySelectorAll<HTMLElement>("[data-swipe-card='1']");
-      if (cards && cards.length > 0) {
-        cards[0].scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-      }
+    if (!el) return;
+
+    function onScroll() {
+      // no-op (kept here for future indicators)
+      void 0;
     }
-  };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
 
-  const handleClearScore = () => {
-    setCaption("");
-    setScoreState("idle");
-    setScore(0);
-    setBreakdown({ hook: 0, clarity: 0, cta: 0, voice: 0 });
-    setImprovedCaption("");
-  };
+  // ---- Helpers ----
+  function openWaitlist(plan?: PlanKey) {
+    setSelectedPlan(plan ?? "free");
+    setWaitlistOpen(true);
+    setJoinState("idle");
+    setErrorMsg("");
+  }
 
-  // Waitlist submit (tries /api/waitlist; if not set up, still shows success)
-  const submitWaitlist = async () => {
-    const e = email.trim();
-    if (!e || !/^\S+@\S+\.\S+$/.test(e)) {
-      setWaitlistState("error");
+  async function submitWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    setJoinState("loading");
+    setErrorMsg("");
+
+    // simple email check
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    if (!ok) {
+      setJoinState("error");
+      setErrorMsg("Please enter a valid email.");
       return;
     }
 
-    setWaitlistState("loading");
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: e, plan: selectedPlan }),
+        body: JSON.stringify({ email: email.trim(), plan: selectedPlan }),
       });
 
-      // If route doesn't exist, Next may return 404; still treat as success for now
       if (!res.ok) {
-        // swallow errors in pre-launch mode
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Request failed");
       }
 
-      setWaitlistState("success");
-    } catch {
-      // still show success (pre-launch)
-      setWaitlistState("success");
+      setJoinState("success");
+    } catch (err: any) {
+      setJoinState("error");
+      setErrorMsg("Could not join right now. Please try again.");
     }
+  }
+
+  function clearScore() {
+    setCaptionInput("");
+    setScore(null);
+    setScoreBreakdown(null);
+    setImprovedCaption("");
+    setScoreHint("Paste a caption and press “Get score”.");
+  }
+
+  function getScore() {
+    const txt = captionInput.trim();
+    if (!txt) {
+      setScore(null);
+      setScoreBreakdown(null);
+      setImprovedCaption("");
+      setScoreHint("Add a caption first.");
+      return;
+    }
+
+    // Very lightweight heuristic demo (no AI calls yet).
+    // You can replace with a real API later.
+    const hasQuestion = /\?/.test(txt);
+    const hasEmoji = /[\u{1F300}-\u{1FAFF}]/u.test(txt);
+    const hasCTA = /(call|dm|message|book|shop|order|tap|click|link|visit|subscribe|sign up|join)/i.test(txt);
+    const length = txt.length;
+
+    const hook = Math.max(10, Math.min(35, (hasQuestion ? 22 : 16) + (hasEmoji ? 4 : 0) + (length < 90 ? 8 : 0)));
+    const clarity = Math.max(10, Math.min(25, length >= 50 && length <= 240 ? 20 : 14));
+    const cta = Math.max(5, Math.min(25, hasCTA ? 20 : 10));
+    const voice = Math.max(5, Math.min(15, hasEmoji ? 12 : 9));
+
+    const total = Math.max(0, Math.min(100, hook + clarity + cta + voice));
+    setScore(total);
+    setScoreBreakdown({ hook, clarity, cta, voice });
+
+    // Improve caption (simple rewrite)
+    const improved = buildImprovedCaption(txt);
+    setImprovedCaption(improved);
+
+    setScoreHint("Scored. Scroll/swipe to view results.");
+  }
+
+  function buildImprovedCaption(original: string) {
+    const base = original.replace(/\s+/g, " ").trim();
+    const ctaLine = "Want help turning posts into customers? Join the Wovi waitlist.";
+    const hookLine = "Quick question:";
+    const cleaned = base.endsWith(".") || base.endsWith("!") || base.endsWith("?") ? base : base + ".";
+    return `${hookLine} ${cleaned}\n\n${ctaLine}`;
+  }
+
+  // ---- UI labels ----
+  const planTitle: Record<PlanKey, string> = {
+    free: "Free Trial",
+    growth: "Growth",
+    pro: "Pro",
   };
 
-  // Smooth scroll helpers
-  const scrollToId = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const planPrice: Record<PlanKey, string> = {
+    free: "$0",
+    growth: "$29",
+    pro: "$49",
   };
 
-  // ===== Styles =====
-  const S = styles;
+  const planPill: Record<PlanKey, { label: string; color: string }> = {
+    free: { label: "Starter Access", color: "#57FE72" },
+    growth: { label: "Most Popular", color: "#02F3DC" },
+    pro: { label: "Advanced", color: "#21AEF5" },
+  };
 
-  // Dynamic hero underline animation (CSS)
-  const globalCss = `
-    :root {
-      color-scheme: dark;
-    }
-    html, body {
-      background: #05070b;
-      margin: 0;
-      padding: 0;
-    }
-    * { box-sizing: border-box; }
-
-    /* Mobile grid fixes */
-    @media (max-width: 980px) {
-      .heroGridMobileFix { grid-template-columns: 1fr !important; gap: 16px !important; }
-      .pricingGridMobileFix { grid-template-columns: 1fr !important; }
-      .scoreGridMobileFix { grid-template-columns: 1fr !important; }
-    }
-
-    /* Sticky mobile CTA */
-    @media (max-width: 820px) {
-      .mobileStickyCta {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
-        background: linear-gradient(180deg, rgba(5,7,11,0) 0%, rgba(5,7,11,0.92) 25%, rgba(5,7,11,0.98) 100%);
-        backdrop-filter: blur(14px);
-        z-index: 60;
-      }
-      .mobileStickyCtaInner {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        max-width: 980px;
-        margin: 0 auto;
-      }
-      .mobileStickyBtn {
-        min-height: 48px; /* Apple HIG tap size */
-        border-radius: 14px;
-        border: 1px solid rgba(2,243,220,0.35);
-        background: linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%);
-        color: #041015;
-        font-weight: 950;
-        letter-spacing: 0.2px;
-        box-shadow: 0 18px 55px rgba(0,0,0,0.45);
-      }
-      .mobileStickyHint {
-        font-size: 12px;
-        opacity: 0.72;
-        text-align: center;
-      }
-      /* avoid content hidden behind sticky bar */
-      .pageBottomPad {
-        padding-bottom: 92px !important;
-      }
-    }
-
-    /* Hero underline animation */
-    .gradUnderline {
-      position: relative;
-      display: inline-block;
-      padding-bottom: 2px;
-    }
-    .gradUnderline::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -6px;
-      height: 4px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #02F3DC, #00EDEC, #01DEF4, #21AEF5, #57FE72);
-      transform-origin: left;
-      animation: underlineSweep 2.8s ease-in-out infinite;
-      opacity: 0.95;
-      filter: blur(0.1px);
-    }
-    @keyframes underlineSweep {
-      0% { transform: scaleX(0.25); opacity: 0.55; }
-      45% { transform: scaleX(1); opacity: 1; }
-      100% { transform: scaleX(0.35); opacity: 0.6; }
-    }
-
-    /* Hover glow pricing cards */
-    .glowCard {
-      transition: transform 160ms ease, box-shadow 200ms ease, border-color 200ms ease;
-    }
-    @media (hover:hover) {
-      .glowCard:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 24px 80px rgba(0,0,0,0.55);
-        border-color: rgba(2,243,220,0.42);
-      }
-    }
-
-    /* Swipe container for score results on mobile */
-    .swipeRow {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-    @media (max-width: 980px) {
-      .swipeRow {
-        display: flex !important;
-        gap: 14px !important;
-        overflow-x: auto !important;
-        scroll-snap-type: x mandatory !important;
-        -webkit-overflow-scrolling: touch !important;
-        padding-bottom: 4px;
-      }
-      .swipeCard {
-        min-width: 86vw;
-        scroll-snap-align: start;
-      }
-    }
-
-    /* iPhone vs Android font tuning (best-effort) */
-    /* iOS tends to look bigger; tighten slightly */
-    @supports (-webkit-touch-callout: none) {
-      .heroH1 { letter-spacing: -0.02em; }
-      .heroSub { font-size: 16px !important; }
-    }
-    /* Android: slightly larger for readability */
-    @supports not (-webkit-touch-callout: none) {
-      @media (max-width: 480px) {
-        .heroH1 { font-size: 42px !important; }
-      }
-    }
-  `;
+  // Determine iOS (for small font tweak class)
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !(window as any).MSStream;
 
   return (
     <>
-      <style jsx global>{globalCss}</style>
+      {/* Background */}
+      <div className="woviBg">
+        <div className="woviGrid" />
+        <div className="woviStars" />
+      </div>
 
-      <div style={S.page} className="pageBottomPad">
-        {/* Top nav */}
-        <div style={S.navWrap}>
-          <div style={S.navInner}>
+      {/* Page */}
+      <div style={S.page}>
+        {/* Top bar */}
+        <header style={S.topbar}>
+          <div style={S.brand}>
+            <div style={S.logoCircle} aria-hidden>
+              <span style={S.logoW}>w</span>
+            </div>
+            <div>
+              <div style={S.brandName}>WOVI</div>
+              <div style={S.brandTag}>AI social media OS for any business</div>
+            </div>
+          </div>
+
+          <nav style={S.nav}>
             <button
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              style={S.brandBtn}
-              aria-label="Go to top"
+              style={S.navLinkBtn}
+              onClick={() => {
+                const el = document.getElementById("pricing");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
             >
-              <div style={S.logoCircle}>W</div>
-              <div style={{ display: "grid", gap: 2 }}>
-                <div style={S.brandName}>WOVI</div>
-                <div style={S.brandSub}>AI social media OS for any business</div>
-              </div>
+              Pricing
             </button>
+            <button style={S.primaryPill} onClick={() => openWaitlist("free")}>
+              Join waitlist
+            </button>
+          </nav>
+        </header>
 
-            <div style={S.navLinks}>
-              <button onClick={() => scrollToId("pricing")} style={S.navLink}>
-                Pricing
-              </button>
-              <button
-                onClick={() => openWaitlistDefaultFree()}
-                style={S.navCta}
-                aria-label="Join waitlist"
-              >
-                Join waitlist
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* HERO (ResuMax-style first screen) */}
-        <section style={S.hero} aria-label="Hero">
-          <div style={S.heroBgGlow} />
-          <div style={S.heroStars} />
-
-          <div style={S.heroCenter}>
-            <div style={S.heroKicker}>Pre-launch • Waitlist only</div>
-
-            <h1 style={S.heroH1} className="heroH1">
-              AI that runs your social media{" "}
-              <span className="gradUnderline" style={S.heroH1Accent}>
-                every week
-              </span>
-              .
-            </h1>
-
-            <p style={S.heroSub} className="heroSub">
-              Tell Wovi what you’re promoting. Wovi generates captions, visuals, and a weekly posting plan — for any business.
-            </p>
-
-            <div style={S.heroCtas}>
-              <button
-                onClick={() => openWaitlistDefaultFree()}
-                style={S.heroPrimary}
-                aria-label="Join waitlist (defaults to Free Trial unless you pick another plan)"
-              >
-                Join waitlist
-              </button>
-              <button onClick={() => scrollToId("pricing")} style={S.heroSecondary}>
-                View pricing
-              </button>
-            </div>
-
-            <div style={S.heroProofRow}>
-              <div style={S.proofItem}>
-                <span style={S.proofDot} />
-                Email-only pre-launch
-              </div>
-              <div style={S.proofItem}>
-                <span style={S.proofDot} />
-                Free Trial tier at launch
-              </div>
-              <div style={S.proofItem}>
-                <span style={S.proofDot} />
-                Works for any industry
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* HERO GRID (the 2 boxes you circled) */}
-        <section style={S.sectionPad}>
+        {/* Hero */}
+        <section style={S.hero} className="reveal">
           <div style={S.heroGrid} className="heroGridMobileFix">
-            {/* Left big card */}
-            <div style={S.heroCardLeft}>
-              <div style={S.pillRow}>
-                <div style={S.pill}>
-                  <span style={S.pillDot} />
-                  Pre-launch • Waitlist only
-                </div>
+            {/* Left hero card */}
+            <div style={S.heroCard}>
+              <div style={S.preLaunchPill}>
+                <span style={S.pillDot} />
+                Pre-launch · Waitlist only
               </div>
 
-              <div style={S.heroTitle}>
+              <h1 style={S.h1} className={`${isIOS ? "iosH1" : "androidH1"}`}>
                 AI that turns your business goals into{" "}
-                <span className="gradUnderline" style={S.gradWord}>
+                <span style={S.accent} className="readyUnderline">
                   ready-to-post
                 </span>{" "}
                 content.
-              </div>
+              </h1>
 
-              <div style={S.heroBody}>
-                Wovi replaces the planning and creation behind social media — captions, visuals, and weekly posting plans — so you stay consistent without burnout.
-              </div>
+              <p style={S.lede}>
+                Wovi replaces the planning and creation behind social media — captions, visuals, and weekly posting plans — so
+                you stay consistent without burnout.
+              </p>
 
-              <div style={S.heroBtnRow}>
-                <button onClick={() => scrollToId("pricing")} style={S.primaryBtn}>
+              <div style={S.heroCtas}>
+                <button style={S.ctaPrimary} onClick={() => openWaitlist(selectedPlan)}>
                   Pick a plan
                 </button>
-
-                <button onClick={() => openWaitlistDefaultFree()} style={S.secondaryBtn}>
+                <button style={S.ctaGhost} onClick={() => openWaitlist("free")}>
                   Join waitlist
                 </button>
               </div>
 
-              <div style={S.miniGrid}>
+              <div style={S.heroMiniGrid}>
                 <div style={S.miniCard}>
-                  <div style={S.miniLabel}>Works for</div>
-                  <div style={S.miniTitle}>Any industry</div>
-                  <div style={S.miniText}>Local, online, service, ecommerce, creators, startups</div>
+                  <div style={S.miniTitle}>Works for</div>
+                  <div style={S.miniBig}>Any industry</div>
+                  <div style={S.miniSmall}>Local, online, service, ecom, creators, startups</div>
                 </div>
                 <div style={S.miniCard}>
-                  <div style={S.miniLabel}>Replaces</div>
-                  <div style={S.miniTitle}>Daily brainstorming</div>
-                  <div style={S.miniText}>No “what should I post?”</div>
+                  <div style={S.miniTitle}>Replaces</div>
+                  <div style={S.miniBig}>Daily brainstorming</div>
+                  <div style={S.miniSmall}>No “what should I post?”</div>
                 </div>
                 <div style={S.miniCard}>
-                  <div style={S.miniLabel}>Outcome</div>
-                  <div style={S.miniTitle}>Consistency</div>
-                  <div style={S.miniText}>Plans + content every week</div>
+                  <div style={S.miniTitle}>Outcome</div>
+                  <div style={S.miniBig}>Consistency</div>
+                  <div style={S.miniSmall}>Plans + content every week</div>
                 </div>
               </div>
             </div>
 
-            {/* Right “This week in Wovi” card */}
-            <div style={S.heroCardRight}>
-              <div style={S.rightTopRow}>
-                <div style={S.rightTitle}>This week in Wovi</div>
-                <div style={S.rightPill}>Auto-planned</div>
+            {/* Right hero card */}
+            <div style={S.weekCard}>
+              <div style={S.weekHead}>
+                <div style={S.weekTitle}>This week in Wovi</div>
+                <div style={S.weekBadge}>Auto-planned</div>
               </div>
 
-              <div style={S.rightGrid}>
-                <div style={S.rightBox}>
-                  <div style={S.rightLabel}>Input</div>
-                  <div style={S.rightStrong}>Goal:</div>
-                  <div style={S.rightText}>"Get more customers this week"</div>
-                  <div style={S.rightMuted}>Tone: confident • modern</div>
+              <div style={S.weekGrid}>
+                <div style={S.weekBox}>
+                  <div style={S.weekLabel}>INPUT</div>
+                  <div style={S.weekKvp}>
+                    <div style={S.weekK}>Goal:</div>
+                    <div style={S.weekV}>&ldquo;Get more leads this week&rdquo;</div>
+                  </div>
+                  <div style={S.weekMuted}>Tone: confident · modern</div>
                 </div>
-
-                <div style={S.rightBox}>
-                  <div style={S.rightLabel}>Output</div>
-                  <div style={S.rightStrong}>Captions + image concepts</div>
-                  <div style={S.rightText}>Ready-to-post variations</div>
+                <div style={S.weekBox}>
+                  <div style={S.weekLabel}>OUTPUT</div>
+                  <div style={S.weekStrong}>Captions + image concepts</div>
+                  <div style={S.weekMuted}>Ready-to-post variations</div>
                 </div>
-
-                <div style={S.rightBox}>
-                  <div style={S.rightLabel}>Plan</div>
-                  <div style={S.rightStrong}>Weekly posting schedule</div>
-                  <div style={S.rightText}>Daily suggestions</div>
+                <div style={S.weekBox}>
+                  <div style={S.weekLabel}>PLAN</div>
+                  <div style={S.weekStrong}>Weekly posting schedule</div>
+                  <div style={S.weekMuted}>Daily suggestions</div>
                 </div>
-
-                <div style={S.rightBox}>
-                  <div style={S.rightLabel}>Result</div>
-                  <div style={S.rightStrong}>You stay consistent</div>
-                  <div style={S.rightText}>No agency, no burnout</div>
+                <div style={S.weekBox}>
+                  <div style={S.weekLabel}>RESULT</div>
+                  <div style={S.weekStrong}>You stay consistent</div>
+                  <div style={S.weekMuted}>No agency, no burnout</div>
                 </div>
               </div>
 
-              <div style={S.rightFooter}>
-                <div style={S.rightFooterText}>Pick a plan now. Get early access when we launch.</div>
-                <button onClick={() => openWaitlistDefaultFree()} style={S.primaryBtnSmall}>
+              <div style={S.weekFooter}>
+                <div style={S.weekFootText}>Pick a plan now. Get early access when we launch.</div>
+                <button style={S.weekBtn} onClick={() => openWaitlist("free")}>
                   Join waitlist
                 </button>
               </div>
@@ -547,334 +556,406 @@ export default function Page() {
           </div>
         </section>
 
-        {/* POST SCORE (upload/paste caption -> get score -> improved caption) */}
-        <section style={S.sectionPad} id="post-score">
-          <div style={S.sectionTitle}>Post Score</div>
-          <div style={S.sectionSub}>
-            Pre-launch demo: paste a post caption and Wovi will rate it (hook, clarity, CTA, voice) — then generate a stronger version.
-          </div>
+        {/* Post Score */}
+        <section style={S.section} className="reveal">
+          <h2 style={S.h2}>Post Score</h2>
+          <p style={S.sub}>
+            Pre-launch demo: paste a post caption and Wovi will rate it (hook, clarity, CTA, voice) — then generate a stronger
+            version.
+          </p>
 
-          <div style={S.scoreWrap} className="scoreGridMobileFix">
-            {/* Left */}
-            <div style={S.panel} className="swipeCard">
-              <div style={S.panelTitle}>Paste your post caption</div>
+          <div style={S.scoreWrap} className="scoreGridMobileFix postScoreMobileFix">
+            {/* left input */}
+            <div style={S.scoreCard}>
+              <div style={S.scoreTitle}>Paste your post caption</div>
 
               <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder={`Example:\n“New availability this week.\nIf you need help with (service/product), message us and we’ll get you set up.\nSpots are limited — book today.”`}
                 style={S.textarea}
+                value={captionInput}
+                onChange={(e) => setCaptionInput(e.target.value)}
+                placeholder={`Example:\n“New availability this week.\nIf you need help with (service/product), message us and we’ll get you set up.\nSpots are limited — book today.”`}
               />
 
-              <div style={S.btnRow}>
-                <button onClick={handleGetScore} style={S.primaryBtn}>
+              <div style={S.scoreBtns}>
+                <button style={S.scoreBtnPrimary} onClick={getScore}>
                   Get score
                 </button>
-                <button onClick={handleClearScore} style={S.secondaryBtn}>
+                <button style={S.scoreBtnGhost} onClick={clearScore}>
                   Clear
                 </button>
               </div>
 
-              <div style={S.tinyNote}>This is a demo score (no account needed yet).</div>
+              <div style={S.scoreTiny}>This is a demo score (no account needed yet).</div>
             </div>
 
-            {/* Right: swipeable on mobile */}
-            <div style={S.scoreRightWrap} ref={swipeRef}>
-              <div className="swipeRow">
-                <div style={S.panel} className="swipeCard" data-swipe-card="1">
-                  <div style={S.panelTitle}>Your Wovi Score</div>
+            {/* right results (swipe on mobile) */}
+            <div style={S.scoreRight}>
+              <div style={S.scoreHint}>{scoreHint}</div>
 
-                  {scoreState === "idle" ? (
-                    <div style={S.emptyState}>Paste a caption and press “Get score”.</div>
+              <div ref={swipeRef} className="swipeRow" style={S.swipeRow}>
+                {/* Score card */}
+                <div className="swipeCard" data-swipe-card="1" style={S.resultCard}>
+                  <div style={S.resultTitle}>Your Wovi Score</div>
+
+                  {score === null ? (
+                    <div style={S.resultEmpty}>Paste a caption and press “Get score”.</div>
                   ) : (
                     <>
-                      <div style={S.scoreTop}>
-                        <div style={S.scoreBig}>{score}/100</div>
-                        <div style={S.scoreMeta}>Demo analysis</div>
+                      <div style={S.bigScoreRow}>
+                        <div style={S.bigScore}>{score}/100</div>
+                        <div style={S.bigScoreMeta}>
+                          <div style={S.bigScoreLabel}>Overall</div>
+                          <div style={S.bigScoreSub}>Higher = stronger distribution potential</div>
+                        </div>
                       </div>
 
                       <div style={S.barWrap}>
-                        <div style={{ ...S.barFill, width: `${score}%` }} />
+                        <div style={{ ...S.barFill, width: `${Math.max(2, Math.min(100, score))}%` }} />
                       </div>
 
-                      <div style={S.metricList}>
-                        <Metric label="Hook" value={breakdown.hook} max={35} />
-                        <Metric label="Clarity" value={breakdown.clarity} max={25} />
-                        <Metric label="CTA" value={breakdown.cta} max={25} />
-                        <Metric label="Voice" value={breakdown.voice} max={15} />
-                      </div>
-
-                      <div style={S.metricHint}>Swipe for the improved caption →</div>
+                      {scoreBreakdown && (
+                        <div style={S.breakList}>
+                          <div style={S.breakRow}>
+                            <span style={S.breakDot} />
+                            Hook <span style={S.breakNum}>{scoreBreakdown.hook}/35</span>
+                          </div>
+                          <div style={S.breakRow}>
+                            <span style={S.breakDot} />
+                            Clarity <span style={S.breakNum}>{scoreBreakdown.clarity}/25</span>
+                          </div>
+                          <div style={S.breakRow}>
+                            <span style={S.breakDot} />
+                            CTA <span style={S.breakNum}>{scoreBreakdown.cta}/25</span>
+                          </div>
+                          <div style={S.breakRow}>
+                            <span style={S.breakDot} />
+                            Voice <span style={S.breakNum}>{scoreBreakdown.voice}/15</span>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
 
-                <div style={S.panel} className="swipeCard" data-swipe-card="1">
-                  <div style={S.panelTitle}>Improved caption</div>
-
-                  {scoreState === "idle" ? (
-                    <div style={S.emptyState}>Your improved caption will appear here.</div>
-                  ) : (
+                {/* Improved caption */}
+                <div className="swipeCard" data-swipe-card="1" style={S.resultCard}>
+                  <div style={S.resultTitle}>Improved caption</div>
+                  {improvedCaption ? (
                     <>
-                      <div style={S.improvedBox}>{improvedCaption}</div>
-
-                      <div style={S.btnRow}>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard?.writeText(improvedCaption);
-                          }}
-                          style={S.primaryBtn}
-                        >
-                          Copy improved caption
-                        </button>
-                        <button onClick={() => openWaitlistDefaultFree()} style={S.secondaryBtn}>
-                          Join waitlist
-                        </button>
-                      </div>
-
-                      <div style={S.tinyNote}>
-                        Want Wovi to do this automatically every week? Join the waitlist for public beta.
-                      </div>
+                      <pre style={S.improvedPre}>{improvedCaption}</pre>
+                      <button
+                        style={S.copyBtn}
+                        onClick={() => {
+                          navigator.clipboard.writeText(improvedCaption).catch(() => {});
+                        }}
+                      >
+                        Copy
+                      </button>
                     </>
+                  ) : (
+                    <div style={S.resultEmpty}>Your improved caption will appear here.</div>
                   )}
                 </div>
               </div>
+
+              <div style={S.swipeNote}>Tip: swipe left/right to view results.</div>
             </div>
           </div>
         </section>
 
-        {/* PRICING */}
-        <section style={S.sectionPad} id="pricing">
-          <div style={S.sectionTitle}>WOVI Pricing Plans</div>
-          <div style={S.sectionSub}>
-            <b>Pre-launch rule:</b> All plans currently lead to the waitlist. Email only. Full billing activates at launch.
-          </div>
+        {/* Pricing */}
+        <section id="pricing" style={S.section} className="reveal">
+          <div style={S.pricingHead}>
+            <h2 style={S.h2}>WOVI Pricing Plans</h2>
+            <div style={S.pricingRule}>
+              Pre-launch rule: All plans currently lead to the waitlist. Users can view pricing, but cannot activate yet.
+              We’re collecting emails only.
+            </div>
 
-          <div style={S.notePill}>
-            <span style={S.pillDot} />
-            Email only • Full billing activates at launch
+            <div style={S.emailOnlyPill}>
+              <span style={S.pillDot} />
+              Email only · Full billing activates at launch
+            </div>
           </div>
 
           <div style={S.pricingGrid} className="pricingGridMobileFix">
             {/* Free */}
-            <div style={S.priceCard} className="glowCard">
-              <div style={S.priceTopRow}>
-                <div style={S.priceName}>Free Trial</div>
-                <div style={{ ...S.badge, borderColor: "rgba(87,254,114,0.4)", color: "#57FE72" }}>Starter Access</div>
+            <div style={S.planCard} className="planCard">
+              <div style={S.planTop}>
+                <div style={S.planName}>Free Trial</div>
+                <div style={{ ...S.planPill, borderColor: "rgba(87,254,114,0.30)", color: "#57FE72" }}>Starter Access</div>
               </div>
 
-              <div style={S.priceAmount}>
-                $0 <span style={S.pricePer}>/ trial</span>
+              <div style={S.planPriceRow}>
+                <div style={S.planPrice}>$0</div>
+                <div style={S.planPer}>/trial</div>
               </div>
 
-              <div style={S.priceDesc}>
+              <div style={S.planDesc}>
                 Try Wovi risk-free. Credit card required at launch. Automatically converts into Growth unless canceled.
               </div>
 
-              <div style={S.divider} />
+              <div style={S.planLine} />
 
-              <div style={S.includesTitle}>Includes</div>
+              <div style={S.planInc}>Includes</div>
               <ul style={S.ul}>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#57FE72" }} /> Limited AI-generated posts
+                  <span style={{ ...S.liDot, background: "#57FE72" }} />
+                  Limited AI-generated posts
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#57FE72" }} /> Basic captions
+                  <span style={{ ...S.liDot, background: "#57FE72" }} />
+                  Basic captions
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#57FE72" }} /> Sample images
+                  <span style={{ ...S.liDot, background: "#57FE72" }} />
+                  Sample images
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#57FE72" }} /> Preview of weekly planning
+                  <span style={{ ...S.liDot, background: "#57FE72" }} />
+                  Preview of weekly planning
                 </li>
               </ul>
 
-              <button onClick={() => openWaitlistForPlan("free")} style={S.planBtn}>
-                Join waitlist
+              <button style={S.planBtn} onClick={() => openWaitlist("free")}>
+                Join waitlist (Free Trial)
               </button>
-              <div style={S.planFoot}>Best for: trying Wovi before you scale.</div>
             </div>
 
-            {/* Growth (Most Popular ONLY ONCE) */}
-            <div style={{ ...S.priceCard, ...S.priceCardPopular }} className="glowCard">
-              <div style={S.priceTopRow}>
-                <div style={S.priceName}>Growth</div>
-                <div style={{ ...S.badge, borderColor: "rgba(2,243,220,0.45)", color: "#02F3DC" }}>Most Popular</div>
+            {/* Growth */}
+            <div style={{ ...S.planCard, ...S.planCardHighlight }} className="planCard">
+              <div style={S.planTop}>
+                <div style={S.planName}>Growth</div>
+                <div style={{ ...S.planPill, borderColor: "rgba(2,243,220,0.35)", color: "#02F3DC" }}>Most Popular</div>
               </div>
 
-              <div style={S.priceAmount}>
-                $29 <span style={S.pricePer}>/ month</span>
+              <div style={S.planPriceRow}>
+                <div style={S.planPrice}>$29</div>
+                <div style={S.planPer}>/month</div>
               </div>
 
-              <div style={S.priceDesc}>
+              <div style={S.planDesc}>
                 Consistent posting without hiring an agency. Weekly planning + captions + visuals for any business.
               </div>
 
-              <div style={S.divider} />
+              <div style={S.planLine} />
 
-              <div style={S.includesTitle}>Includes</div>
+              <div style={S.planInc}>Includes</div>
               <ul style={S.ul}>
                 <li style={S.li}>
-                  <span style={S.bullet} /> 2–3 posts per day
+                  <span style={{ ...S.liDot, background: "#02F3DC" }} />
+                  2–3 posts per day
                 </li>
                 <li style={S.li}>
-                  <span style={S.bullet} /> Weekly content planning
+                  <span style={{ ...S.liDot, background: "#02F3DC" }} />
+                  Weekly content planning
                 </li>
                 <li style={S.li}>
-                  <span style={S.bullet} /> AI-generated captions
+                  <span style={{ ...S.liDot, background: "#02F3DC" }} />
+                  AI-generated captions
                 </li>
                 <li style={S.li}>
-                  <span style={S.bullet} /> AI image ideas or images
+                  <span style={{ ...S.liDot, background: "#02F3DC" }} />
+                  AI image ideas or images
                 </li>
                 <li style={S.li}>
-                  <span style={S.bullet} /> Brand tone learning
+                  <span style={{ ...S.liDot, background: "#02F3DC" }} />
+                  Brand tone learning
                 </li>
                 <li style={S.li}>
-                  <span style={S.bullet} /> Unlimited edits/regenerations
+                  <span style={{ ...S.liDot, background: "#02F3DC" }} />
+                  Unlimited edits/regenerations
                 </li>
               </ul>
 
-              <button onClick={() => openWaitlistForPlan("growth")} style={S.planBtnPrimary}>
-                Join waitlist
+              <button style={S.planBtn} onClick={() => openWaitlist("growth")}>
+                Join waitlist (Growth)
               </button>
-              <div style={S.planFoot}>Best for: most businesses that want consistency.</div>
             </div>
 
             {/* Pro */}
-            <div style={S.priceCard} className="glowCard">
-              <div style={S.priceTopRow}>
-                <div style={S.priceName}>Pro</div>
-                <div style={{ ...S.badge, borderColor: "rgba(33,174,245,0.45)", color: "#21AEF5" }}>Advanced</div>
+            <div style={S.planCard} className="planCard">
+              <div style={S.planTop}>
+                <div style={S.planName}>Pro</div>
+                <div style={{ ...S.planPill, borderColor: "rgba(33,174,245,0.35)", color: "#21AEF5" }}>Advanced</div>
               </div>
 
-              <div style={S.priceAmount}>
-                $49 <span style={S.pricePer}>/ month</span>
+              <div style={S.planPriceRow}>
+                <div style={S.planPrice}>$49</div>
+                <div style={S.planPer}>/month</div>
               </div>
 
-              <div style={S.priceDesc}>
+              <div style={S.planDesc}>
                 Higher volume + deeper strategy for serious brands that want to scale content output fast.
               </div>
 
-              <div style={S.divider} />
+              <div style={S.planLine} />
 
-              <div style={S.includesTitle}>Includes</div>
+              <div style={S.planInc}>Includes</div>
               <ul style={S.ul}>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#21AEF5" }} /> Everything in Growth
+                  <span style={{ ...S.liDot, background: "#21AEF5" }} />
+                  Everything in Growth
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#21AEF5" }} /> Higher daily post volume
+                  <span style={{ ...S.liDot, background: "#21AEF5" }} />
+                  Higher daily post volume
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#21AEF5" }} /> Advanced strategy suggestions
+                  <span style={{ ...S.liDot, background: "#21AEF5" }} />
+                  Advanced strategy suggestions
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#21AEF5" }} /> Campaign & launch planning
+                  <span style={{ ...S.liDot, background: "#21AEF5" }} />
+                  Campaign & launch planning
                 </li>
                 <li style={S.li}>
-                  <span style={{ ...S.bullet, background: "#21AEF5" }} /> AI video ad concepts
+                  <span style={{ ...S.liDot, background: "#21AEF5" }} />
+                  AI video ad concepts
+                </li>
+                <li style={S.li}>
+                  <span style={{ ...S.liDot, background: "#21AEF5" }} />
+                  Priority feature access
                 </li>
               </ul>
 
-              <button onClick={() => openWaitlistForPlan("pro")} style={S.planBtn}>
-                Join waitlist
+              <button style={S.planBtn} onClick={() => openWaitlist("pro")}>
+                Join waitlist (Pro)
               </button>
-              <div style={S.planFoot}>Best for: founders and fast-growing brands.</div>
             </div>
           </div>
         </section>
 
-        {/* FOOTER */}
+        {/* Footer */}
         <footer style={S.footer}>
           <div style={S.footerInner}>
-            <div style={{ opacity: 0.75 }}>© {new Date().getFullYear()} Wovi • Pre-launch</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-              <button onClick={() => openWaitlistDefaultFree()} style={S.footerBtn}>
+            <div style={S.footerLeft}>
+              <div style={S.footerBrand}>WOVI</div>
+              <div style={S.footerMuted}>Pre-launch · collecting emails only</div>
+            </div>
+            <div style={S.footerRight}>
+              <button style={S.footerBtn} onClick={() => openWaitlist("free")}>
                 Join waitlist
-              </button>
-              <button onClick={() => scrollToId("pricing")} style={S.footerBtn}>
-                Pricing
-              </button>
-              <button onClick={() => scrollToId("post-score")} style={S.footerBtn}>
-                Post Score
               </button>
             </div>
           </div>
         </footer>
       </div>
 
-      {/* Sticky bottom CTA (mobile) */}
+      {/* Sticky mobile CTA (defaults to Free Trial unless user picked another plan) */}
       <div className="mobileStickyCta">
         <div className="mobileStickyCtaInner">
-          <button className="mobileStickyBtn" onClick={() => openWaitlistDefaultFree()}>
+          <button className="mobileStickyBtn" onClick={() => openWaitlist(selectedPlan ?? "free")}>
             Join waitlist (defaults to Free Trial)
           </button>
-          <div className="mobileStickyHint">Pick Growth/Pro first if you want a different plan.</div>
+          <div className="mobileStickySub">Pick Growth/Pro first if you want a different plan.</div>
         </div>
       </div>
 
-      {/* WAITLIST MODAL */}
-      {showWaitlist && (
-        <div style={S.modalOverlay} role="dialog" aria-modal="true" aria-label="Join waitlist">
-          <div style={S.modal}>
-            <div style={S.modalTop}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={S.modalTitle}>
-                  Join the Wovi waitlist — <span style={{ color: "#02F3DC" }}>{planLabel}</span>
-                </div>
-                <div style={S.modalSub}>
-                  We’re launching in small batches. Enter your email and we’ll notify you when public beta opens.
+      {/* Waitlist Modal */}
+      {waitlistOpen && (
+        <div
+          className="modalBackdrop"
+          onClick={() => {
+            setWaitlistOpen(false);
+            setJoinState("idle");
+            setErrorMsg("");
+          }}
+        >
+          <div
+            className="modalPanel"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <div className="modalHeader">
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ fontWeight: 950, letterSpacing: 0.2 }}>Join the waitlist</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>
+                  Selected plan: <span style={{ fontWeight: 900 }}>{planTitle[selectedPlan]}</span>
                 </div>
               </div>
-              <button onClick={closeWaitlist} style={S.modalX} aria-label="Close">
-                ✕
+
+              <button className="modalClose" onClick={() => setWaitlistOpen(false)}>
+                Close
               </button>
             </div>
 
-            {waitlistState !== "success" ? (
-              <>
-                <div style={S.modalRow}>
-                  <input
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (waitlistState === "error") setWaitlistState("idle");
-                    }}
-                    placeholder="you@business.com"
-                    style={S.input}
-                    inputMode="email"
-                    autoComplete="email"
-                  />
+            <div className="modalBody">
+              {joinState !== "success" ? (
+                <>
+                  <div style={{ fontSize: 13, opacity: 0.8, lineHeight: 1.6, marginBottom: 12 }}>
+                    We’re launching in small batches. Enter your email to get early access when public beta releases.
+                  </div>
+
+                  <form onSubmit={submitWaitlist} style={{ display: "grid", gap: 10 }}>
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@business.com"
+                      style={{
+                        height: 48,
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(255,255,255,0.06)",
+                        color: "rgba(255,255,255,0.92)",
+                        padding: "0 14px",
+                        outline: "none",
+                        fontSize: 14,
+                      }}
+                    />
+
+                    {joinState === "error" && (
+                      <div style={{ fontSize: 12, color: "rgba(255,120,150,1)", fontWeight: 900 }}>{errorMsg}</div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={joinState === "loading"}
+                      style={{
+                        height: 48,
+                        borderRadius: 14,
+                        border: "1px solid rgba(2,243,220,0.35)",
+                        background:
+                          "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+                        color: "#041015",
+                        fontWeight: 950,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {joinState === "loading" ? "Joining..." : "Join the waitlist"}
+                    </button>
+
+                    <div style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>
+                      No spam. Unsubscribe anytime. Early access may include special launch pricing.
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 18, fontWeight: 950 }}>You’re on the list.</div>
+                  <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.7 }}>
+                    Thanks — we’ll email you as soon as public beta releases.
+                  </div>
                   <button
-                    onClick={submitWaitlist}
-                    style={S.submitBtn}
-                    disabled={waitlistState === "loading"}
+                    style={{
+                      marginTop: 8,
+                      height: 44,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.06)",
+                      color: "rgba(255,255,255,0.92)",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setWaitlistOpen(false)}
                   >
-                    {waitlistState === "loading" ? "Joining..." : "Join waitlist"}
+                    Done
                   </button>
                 </div>
-
-                {waitlistState === "error" && (
-                  <div style={S.errorText}>Enter a valid email address.</div>
-                )}
-
-                <div style={S.tinyNote}>
-                  Email only. No passwords. No payment info yet. You can unsubscribe anytime.
-                </div>
-              </>
-            ) : (
-              <div style={S.successBox}>
-                <div style={S.successTitle}>You’re on the list.</div>
-                <div style={S.successBody}>
-                  Thanks — we’ll email you as soon as public beta releases.
-                  <br />
-                  <span style={{ opacity: 0.8 }}>Selected plan: {planLabel}</span>
-                </div>
-                <button onClick={closeWaitlist} style={S.successBtn}>
-                  Done
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -882,596 +963,487 @@ export default function Page() {
   );
 }
 
-function Metric({ label, value, max }: { label: string; value: number; max: number }) {
-  const pct = Math.max(0, Math.min(100, Math.round((value / max) * 100)));
-  return (
-    <div style={styles.metricRow}>
-      <div style={styles.metricLeft}>
-        <span style={styles.metricDot} />
-        <span style={styles.metricLabel}>{label}</span>
-      </div>
-      <div style={styles.metricRight}>
-        <span style={styles.metricValue}>
-          {Math.round(value)}/{max}
-        </span>
-        <div style={styles.metricBar}>
-          <div style={{ ...styles.metricBarFill, width: `${pct}%` }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
+/* ================================
+   INLINE STYLES (no tailwind)
+   ================================ */
 const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
-    color: "#EAF1FF",
+    color: "rgba(255,255,255,0.92)",
+    padding: "18px 18px 96px",
     fontFamily:
-      'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"',
-    background: "radial-gradient(1200px 800px at 50% 0%, rgba(33,174,245,0.16), transparent 60%), #05070b",
+      'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji"',
   },
 
-  navWrap: {
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-    background: "rgba(5,7,11,0.62)",
-    backdropFilter: "blur(14px)",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-  },
-  navInner: {
-    maxWidth: 1100,
+  topbar: {
+    maxWidth: 1180,
     margin: "0 auto",
-    padding: "14px 16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+    padding: "10px 4px 18px",
   },
-  brandBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "transparent",
-    border: "none",
-    color: "inherit",
-    cursor: "pointer",
-    padding: 0,
-  },
+
+  brand: { display: "flex", alignItems: "center", gap: 12 },
+
   logoCircle: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 14,
+    background: "linear-gradient(135deg, #02F3DC 0%, #21AEF5 55%, #57FE72 100%)",
+    boxShadow: "0 18px 55px rgba(0,0,0,0.55)",
     display: "grid",
     placeItems: "center",
-    fontWeight: 950,
-    letterSpacing: "-0.02em",
-    background: "linear-gradient(135deg, #02F3DC 0%, #21AEF5 60%, #57FE72 100%)",
-    color: "#041015",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-  },
-  brandName: { fontWeight: 950, letterSpacing: "0.06em", fontSize: 13 },
-  brandSub: { fontSize: 12, opacity: 0.72 },
-
-  navLinks: { display: "flex", alignItems: "center", gap: 10 },
-  navLink: {
-    background: "transparent",
-    border: "none",
-    color: "rgba(234,241,255,0.9)",
-    cursor: "pointer",
-    padding: "10px 12px",
-    borderRadius: 12,
-    fontWeight: 800,
-    minHeight: 40,
-  },
-  navCta: {
-    minHeight: 40,
-    padding: "10px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(2,243,220,0.35)",
-    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    color: "#041015",
-    fontWeight: 950,
-    cursor: "pointer",
   },
 
-  hero: {
-    position: "relative",
-    overflow: "hidden",
-    padding: "74px 16px 34px",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-  },
-  heroBgGlow: {
-    position: "absolute",
-    inset: -200,
-    background:
-      "radial-gradient(900px 500px at 50% 10%, rgba(2,243,220,0.22), transparent 60%), radial-gradient(700px 400px at 80% 25%, rgba(33,174,245,0.18), transparent 60%), radial-gradient(700px 400px at 20% 35%, rgba(87,254,114,0.12), transparent 60%)",
-    filter: "blur(0px)",
-    pointerEvents: "none",
-  },
-  heroStars: {
-    position: "absolute",
-    inset: 0,
-    backgroundImage:
-      "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)",
-    backgroundSize: "22px 22px",
-    opacity: 0.10,
-    maskImage: "radial-gradient(600px 400px at 50% 30%, rgba(0,0,0,1), transparent 72%)",
-    pointerEvents: "none",
-  },
-  heroCenter: {
-    position: "relative",
-    maxWidth: 980,
-    margin: "0 auto",
-    textAlign: "center",
-    padding: "0 6px",
-  },
-  heroKicker: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "8px 12px",
-    borderRadius: 999,
+  logoW: { fontWeight: 950, color: "#041015", fontSize: 18, textTransform: "lowercase" },
+
+  brandName: { fontWeight: 950, letterSpacing: 0.6 },
+  brandTag: { fontSize: 12, opacity: 0.72, marginTop: 2 },
+
+  nav: { display: "flex", alignItems: "center", gap: 10 },
+
+  navLinkBtn: {
+    appearance: "none",
     border: "1px solid rgba(255,255,255,0.10)",
     background: "rgba(255,255,255,0.04)",
-    fontSize: 12,
-    fontWeight: 900,
-    opacity: 0.9,
+    color: "rgba(255,255,255,0.9)",
+    padding: "10px 12px",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 13,
+    minHeight: 40,
   },
-  heroH1: {
-    margin: "18px 0 12px",
-    fontSize: 52,
-    lineHeight: 1.05,
-    letterSpacing: "-0.03em",
-    fontWeight: 1000 as any,
-  },
-  heroH1Accent: {
-    color: "#EAF1FF",
-  },
-  heroSub: {
-    maxWidth: 760,
-    margin: "0 auto",
-    fontSize: 17,
-    lineHeight: 1.6,
-    color: "rgba(234,241,255,0.78)",
-  },
-  heroCtas: {
-    marginTop: 22,
-    display: "flex",
-    justifyContent: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  heroPrimary: {
-    minHeight: 48,
-    padding: "12px 18px",
-    borderRadius: 16,
+
+  primaryPill: {
+    appearance: "none",
     border: "1px solid rgba(2,243,220,0.35)",
     background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     color: "#041015",
+    padding: "10px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
     fontWeight: 950,
-    cursor: "pointer",
-    boxShadow: "0 18px 60px rgba(0,0,0,0.52)",
-  },
-  heroSecondary: {
-    minHeight: 48,
-    padding: "12px 18px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(234,241,255,0.92)",
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-  heroProofRow: {
-    marginTop: 16,
-    display: "flex",
-    gap: 12,
-    justifyContent: "center",
-    flexWrap: "wrap",
-  },
-  proofItem: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    fontSize: 12,
-    opacity: 0.78,
-    padding: "8px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.08)",
-    background: "rgba(0,0,0,0.18)",
-  },
-  proofDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    background: "#57FE72",
-    boxShadow: "0 0 0 3px rgba(87,254,114,0.10)",
+    fontSize: 13,
+    minHeight: 40,
   },
 
-  sectionPad: { maxWidth: 1100, margin: "0 auto", padding: "26px 16px" },
+  hero: { maxWidth: 1180, margin: "0 auto", padding: "6px 0 10px" },
 
   heroGrid: {
     display: "grid",
-    gridTemplateColumns: "1.25fr 1fr",
-    gap: 16,
+    gridTemplateColumns: "1.2fr 0.8fr",
+    gap: 18,
     alignItems: "stretch",
   },
-  heroCardLeft: {
+
+  heroCard: {
     borderRadius: 22,
     border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.04)",
-    boxShadow: "0 18px 70px rgba(0,0,0,0.55)",
-    padding: 18,
+    background:
+      "radial-gradient(900px 520px at 20% 10%, rgba(2,243,220,0.10), transparent 55%), radial-gradient(900px 520px at 80% 0%, rgba(33,174,245,0.10), transparent 60%), rgba(12,14,18,0.72)",
+    boxShadow: "0 35px 120px rgba(0,0,0,0.68)",
+    padding: 22,
   },
-  heroCardRight: {
-    borderRadius: 22,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.04)",
-    boxShadow: "0 18px 70px rgba(0,0,0,0.55)",
-    padding: 18,
-    display: "grid",
-    gap: 12,
-  },
-  pillRow: { display: "flex", justifyContent: "flex-start" },
-  pill: {
+
+  preLaunchPill: {
     display: "inline-flex",
     alignItems: "center",
     gap: 10,
-    padding: "8px 12px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.18)",
-    fontSize: 12,
-    fontWeight: 900,
-  },
-  pillDot: { width: 7, height: 7, borderRadius: 999, background: "#02F3DC" },
-
-  heroTitle: {
-    marginTop: 12,
-    fontSize: 44,
-    lineHeight: 1.06,
-    letterSpacing: "-0.03em",
-    fontWeight: 1000 as any,
-  },
-  gradWord: { color: "#02F3DC" },
-  heroBody: { marginTop: 10, color: "rgba(234,241,255,0.78)", fontSize: 14.5, lineHeight: 1.7 },
-
-  heroBtnRow: { marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" },
-
-  primaryBtn: {
-    minHeight: 48,
-    padding: "12px 16px",
-    borderRadius: 16,
-    border: "1px solid rgba(2,243,220,0.35)",
-    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    color: "#041015",
-    fontWeight: 950,
-    cursor: "pointer",
-  },
-  secondaryBtn: {
-    minHeight: 48,
-    padding: "12px 16px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.12)",
     background: "rgba(255,255,255,0.04)",
-    color: "rgba(234,241,255,0.92)",
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-
-  miniGrid: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 10,
-  },
-  miniCard: {
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.18)",
-    padding: 12,
-  },
-  miniLabel: { fontSize: 11, fontWeight: 950, opacity: 0.72, letterSpacing: "0.08em" },
-  miniTitle: { marginTop: 6, fontSize: 13, fontWeight: 950 },
-  miniText: { marginTop: 6, fontSize: 12, opacity: 0.75, lineHeight: 1.5 },
-
-  rightTopRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  rightTitle: { fontWeight: 950, fontSize: 14 },
-  rightPill: {
-    padding: "7px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.18)",
+    padding: "8px 12px",
     fontSize: 12,
     fontWeight: 900,
-    opacity: 0.9,
+    opacity: 0.92,
+    marginBottom: 14,
   },
-  rightGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  rightBox: {
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.18)",
-    padding: 12,
-    minHeight: 92,
-  },
-  rightLabel: { fontSize: 11, fontWeight: 950, opacity: 0.70, letterSpacing: "0.08em" },
-  rightStrong: { marginTop: 6, fontSize: 13, fontWeight: 950 },
-  rightText: { marginTop: 6, fontSize: 12, opacity: 0.78, lineHeight: 1.5 },
-  rightMuted: { marginTop: 6, fontSize: 12, opacity: 0.62 },
 
-  rightFooter: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  rightFooterText: { fontSize: 12, opacity: 0.72, lineHeight: 1.5 },
-  primaryBtnSmall: {
-    minHeight: 44,
-    padding: "10px 14px",
+  pillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: "#02F3DC",
+    boxShadow: "0 0 18px rgba(2,243,220,0.35)",
+  },
+
+  h1: {
+    margin: 0,
+    fontSize: "clamp(36px, 5vw, 54px)",
+    lineHeight: 1.04,
+    letterSpacing: -0.6,
+  },
+
+  accent: { color: "#02F3DC" },
+
+  lede: { marginTop: 12, marginBottom: 16, opacity: 0.85, lineHeight: 1.7, fontSize: 14.5 },
+
+  heroCtas: { display: "flex", gap: 10, flexWrap: "wrap" },
+
+  ctaPrimary: {
+    minHeight: 48,
     borderRadius: 14,
     border: "1px solid rgba(2,243,220,0.35)",
     background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     color: "#041015",
     fontWeight: 950,
+    padding: "12px 16px",
     cursor: "pointer",
-    whiteSpace: "nowrap",
   },
 
-  sectionTitle: { fontSize: 26, fontWeight: 1000 as any, letterSpacing: "-0.02em" },
-  sectionSub: { marginTop: 8, fontSize: 14, lineHeight: 1.7, color: "rgba(234,241,255,0.74)" },
+  ctaGhost: {
+    minHeight: 48,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    fontWeight: 900,
+    padding: "12px 16px",
+    cursor: "pointer",
+  },
 
-  scoreWrap: { marginTop: 14, display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 14, alignItems: "stretch" },
-  panel: {
+  heroMiniGrid: {
+    marginTop: 16,
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
+  },
+
+  miniCard: {
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.03)",
+    padding: 12,
+  },
+
+  miniTitle: { fontSize: 11, opacity: 0.7, fontWeight: 900, letterSpacing: 0.4 },
+  miniBig: { marginTop: 4, fontSize: 13, fontWeight: 950 },
+  miniSmall: { marginTop: 6, fontSize: 12, opacity: 0.7, lineHeight: 1.5 },
+
+  weekCard: {
     borderRadius: 22,
     border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.04)",
-    boxShadow: "0 18px 70px rgba(0,0,0,0.55)",
-    padding: 18,
+    background:
+      "radial-gradient(760px 420px at 15% 10%, rgba(87,254,114,0.08), transparent 55%), radial-gradient(760px 420px at 85% 10%, rgba(2,243,220,0.10), transparent 55%), rgba(12,14,18,0.62)",
+    boxShadow: "0 35px 120px rgba(0,0,0,0.68)",
+    padding: 16,
   },
-  panelTitle: { fontWeight: 950, fontSize: 14, marginBottom: 10 },
+
+  weekHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  weekTitle: { fontWeight: 950 },
+  weekBadge: {
+    fontSize: 12,
+    fontWeight: 900,
+    padding: "7px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.04)",
+    opacity: 0.9,
+  },
+
+  weekGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+
+  weekBox: {
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.03)",
+    padding: 12,
+    minHeight: 92,
+  },
+
+  weekLabel: { fontSize: 11, opacity: 0.7, fontWeight: 950, letterSpacing: 0.4, marginBottom: 6 },
+  weekKvp: { display: "flex", gap: 8, alignItems: "baseline" },
+  weekK: { fontSize: 12, opacity: 0.75, fontWeight: 900 },
+  weekV: { fontSize: 12.5, fontWeight: 800 },
+  weekStrong: { fontSize: 13, fontWeight: 950 },
+  weekMuted: { marginTop: 6, fontSize: 12, opacity: 0.7, lineHeight: 1.5 },
+
+  weekFooter: {
+    marginTop: 12,
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+  },
+
+  weekFootText: { fontSize: 12, opacity: 0.75 },
+
+  weekBtn: {
+    minHeight: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(2,243,220,0.35)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #21AEF5 60%, #57FE72 100%)",
+    color: "#041015",
+    fontWeight: 950,
+    padding: "10px 14px",
+    cursor: "pointer",
+  },
+
+  section: { maxWidth: 1180, margin: "0 auto", padding: "28px 0 0" },
+
+  h2: { margin: 0, fontSize: 26, letterSpacing: -0.2 },
+  sub: { marginTop: 10, marginBottom: 16, fontSize: 13.5, opacity: 0.78, lineHeight: 1.6 },
+
+  scoreWrap: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" },
+
+  scoreCard: {
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(12,14,18,0.62)",
+    boxShadow: "0 35px 120px rgba(0,0,0,0.55)",
+    padding: 16,
+  },
+
+  scoreTitle: { fontWeight: 950, marginBottom: 10 },
+
   textarea: {
     width: "100%",
-    minHeight: 170,
-    resize: "vertical",
+    minHeight: 150,
     borderRadius: 16,
     border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.22)",
-    color: "rgba(234,241,255,0.92)",
+    background: "rgba(255,255,255,0.03)",
+    color: "rgba(255,255,255,0.92)",
     padding: 14,
     outline: "none",
-    fontSize: 14,
-    lineHeight: 1.55,
-  },
-  btnRow: { marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" },
-  tinyNote: { marginTop: 10, fontSize: 12, opacity: 0.70, lineHeight: 1.6 },
-
-  scoreRightWrap: { minHeight: 1 },
-
-  emptyState: {
-    borderRadius: 16,
-    border: "1px dashed rgba(255,255,255,0.16)",
-    background: "rgba(0,0,0,0.16)",
-    padding: 14,
-    opacity: 0.72,
-    fontSize: 13,
+    resize: "vertical",
     lineHeight: 1.6,
+    fontSize: 13.5,
   },
-  scoreTop: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 10 },
-  scoreBig: { fontSize: 42, fontWeight: 1000 as any, letterSpacing: "-0.03em" },
-  scoreMeta: { fontSize: 12, opacity: 0.72, fontWeight: 900 },
+
+  scoreBtns: { display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" },
+
+  scoreBtnPrimary: {
+    minHeight: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(2,243,220,0.35)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #21AEF5 60%, #57FE72 100%)",
+    color: "#041015",
+    fontWeight: 950,
+    padding: "10px 14px",
+    cursor: "pointer",
+  },
+
+  scoreBtnGhost: {
+    minHeight: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    fontWeight: 900,
+    padding: "10px 14px",
+    cursor: "pointer",
+  },
+
+  scoreTiny: { marginTop: 10, fontSize: 12, opacity: 0.65 },
+
+  scoreRight: {
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(12,14,18,0.62)",
+    boxShadow: "0 35px 120px rgba(0,0,0,0.55)",
+    padding: 16,
+    overflow: "hidden",
+  },
+
+  scoreHint: { fontSize: 12.5, opacity: 0.8, marginBottom: 12 },
+
+  swipeRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+
+  resultCard: {
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.03)",
+    padding: 14,
+    minHeight: 180,
+  },
+
+  resultTitle: { fontWeight: 950, marginBottom: 10 },
+
+  resultEmpty: { fontSize: 13, opacity: 0.65, lineHeight: 1.6, marginTop: 10 },
+
+  bigScoreRow: { display: "flex", gap: 12, alignItems: "center", marginBottom: 12 },
+  bigScore: { fontSize: 34, fontWeight: 950, letterSpacing: -0.3 },
+  bigScoreMeta: { display: "grid", gap: 2 },
+  bigScoreLabel: { fontSize: 12, opacity: 0.75, fontWeight: 900 },
+  bigScoreSub: { fontSize: 12, opacity: 0.65 },
 
   barWrap: {
     height: 10,
     borderRadius: 999,
     background: "rgba(255,255,255,0.08)",
     overflow: "hidden",
-    border: "1px solid rgba(255,255,255,0.08)",
     marginBottom: 12,
   },
+
   barFill: {
     height: "100%",
     borderRadius: 999,
-    background: "linear-gradient(90deg, #02F3DC, #00EDEC, #01DEF4, #21AEF5, #57FE72)",
+    background: "linear-gradient(90deg, #ff4d4d 0%, #ffd24d 35%, #02F3DC 70%, #57FE72 100%)",
+    width: "2%",
   },
 
-  metricList: { display: "grid", gap: 10 },
-  metricRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  metricLeft: { display: "flex", alignItems: "center", gap: 10 },
-  metricDot: { width: 8, height: 8, borderRadius: 999, background: "#02F3DC", boxShadow: "0 0 0 3px rgba(2,243,220,0.12)" },
-  metricLabel: { fontSize: 13, fontWeight: 900, opacity: 0.9 },
-  metricRight: { display: "flex", alignItems: "center", gap: 10, minWidth: 160, justifyContent: "flex-end" },
-  metricValue: { fontSize: 12, opacity: 0.8, fontWeight: 900, width: 64, textAlign: "right" },
-  metricBar: {
-    width: 90,
+  breakList: { display: "grid", gap: 8 },
+
+  breakRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    fontSize: 13,
+    opacity: 0.9,
+    padding: "8px 10px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.07)",
+    background: "rgba(255,255,255,0.02)",
+  },
+
+  breakDot: {
+    width: 8,
     height: 8,
     borderRadius: 999,
-    background: "rgba(255,255,255,0.08)",
-    overflow: "hidden",
-    border: "1px solid rgba(255,255,255,0.08)",
+    background: "#02F3DC",
+    boxShadow: "0 0 16px rgba(2,243,220,0.25)",
+    marginRight: 8,
   },
-  metricBarFill: { height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #02F3DC, #21AEF5, #57FE72)" },
-  metricHint: { marginTop: 12, fontSize: 12, opacity: 0.72 },
 
-  improvedBox: {
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.22)",
-    padding: 14,
+  breakNum: { fontWeight: 950, opacity: 0.85 },
+
+  improvedPre: {
     whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    fontSize: 13,
     lineHeight: 1.6,
-    fontSize: 13.5,
-    color: "rgba(234,241,255,0.9)",
-  },
-
-  notePill: {
-    marginTop: 12,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "10px 14px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.18)",
-    fontSize: 12,
-    fontWeight: 900,
+    margin: 0,
     opacity: 0.92,
   },
 
-  pricingGrid: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 14,
-    alignItems: "stretch",
+  copyBtn: {
+    marginTop: 12,
+    minHeight: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    fontWeight: 900,
+    padding: "10px 14px",
+    cursor: "pointer",
+    width: "100%",
   },
-  priceCard: {
-    borderRadius: 22,
+
+  swipeNote: { marginTop: 10, fontSize: 12, opacity: 0.65 },
+
+  pricingHead: { display: "grid", gap: 10, marginBottom: 14 },
+
+  pricingRule: { fontSize: 13.5, opacity: 0.78, lineHeight: 1.6 },
+
+  emailOnlyPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.10)",
     background: "rgba(255,255,255,0.04)",
-    boxShadow: "0 18px 70px rgba(0,0,0,0.55)",
-    padding: 18,
-    display: "grid",
-    gap: 10,
-    minWidth: 0,
-  },
-  priceCardPopular: {
-    borderColor: "rgba(2,243,220,0.35)",
-    boxShadow: "0 26px 90px rgba(0,0,0,0.62)",
-  },
-  priceTopRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  priceName: { fontSize: 18, fontWeight: 1000 as any },
-  badge: {
-    padding: "7px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.18)",
+    padding: "8px 12px",
     fontSize: 12,
-    fontWeight: 950,
-    whiteSpace: "nowrap",
+    fontWeight: 900,
+    width: "fit-content",
   },
-  priceAmount: { fontSize: 46, fontWeight: 1000 as any, letterSpacing: "-0.03em" },
-  pricePer: { fontSize: 13, opacity: 0.72, fontWeight: 900 },
-  priceDesc: { fontSize: 13, opacity: 0.78, lineHeight: 1.6 },
-  divider: { height: 1, background: "rgba(255,255,255,0.10)", margin: "6px 0" },
-  includesTitle: { fontSize: 12, fontWeight: 950, letterSpacing: "0.08em", opacity: 0.85 },
-  ul: { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 9 },
-  li: { display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, opacity: 0.85, lineHeight: 1.5 },
-  bullet: { width: 10, height: 10, borderRadius: 999, background: "#02F3DC", marginTop: 4, flex: "0 0 auto" },
 
-  planBtn: {
-    marginTop: 8,
-    minHeight: 48,
-    padding: "12px 16px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(234,241,255,0.92)",
-    fontWeight: 950,
-    cursor: "pointer",
-  },
-  planBtnPrimary: {
-    marginTop: 8,
-    minHeight: 48,
-    padding: "12px 16px",
-    borderRadius: 16,
-    border: "1px solid rgba(2,243,220,0.35)",
-    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    color: "#041015",
-    fontWeight: 950,
-    cursor: "pointer",
-  },
-  planFoot: { fontSize: 12, opacity: 0.68, marginTop: 2, lineHeight: 1.5 },
+  pricingGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 },
 
-  footer: {
-    borderTop: "1px solid rgba(255,255,255,0.06)",
-    padding: "26px 16px",
-    marginTop: 18,
-    background: "rgba(0,0,0,0.18)",
-  },
-  footerInner: {
-    maxWidth: 1100,
-    margin: "0 auto",
+  planCard: {
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(12,14,18,0.62)",
+    boxShadow: "0 35px 120px rgba(0,0,0,0.55)",
+    padding: 16,
     display: "grid",
     gap: 12,
-    justifyItems: "center",
-    textAlign: "center",
-  },
-  footerBtn: {
-    minHeight: 42,
-    padding: "10px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(234,241,255,0.92)",
-    fontWeight: 900,
-    cursor: "pointer",
   },
 
-  // Modal
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.62)",
-    backdropFilter: "blur(10px)",
-    zIndex: 80,
-    display: "grid",
-    placeItems: "center",
-    padding: 16,
+  planCardHighlight: {
+    borderColor: "rgba(2,243,220,0.22)",
+    boxShadow: "0 35px 120px rgba(0,0,0,0.55), 0 0 0 1px rgba(2,243,220,0.18) inset",
   },
-  modal: {
-    width: "min(680px, 100%)",
-    borderRadius: 22,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(10,14,20,0.92)",
-    boxShadow: "0 30px 120px rgba(0,0,0,0.75)",
-    padding: 18,
-  },
-  modalTop: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  modalTitle: { fontSize: 18, fontWeight: 1000 as any },
-  modalSub: { fontSize: 13, opacity: 0.78, lineHeight: 1.6 },
-  modalX: {
-    minHeight: 40,
-    minWidth: 40,
-    borderRadius: 14,
+
+  planTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+
+  planName: { fontWeight: 950, fontSize: 16 },
+
+  planPill: {
+    borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.12)",
     background: "rgba(255,255,255,0.04)",
-    color: "rgba(234,241,255,0.92)",
-    cursor: "pointer",
-    fontWeight: 950,
+    padding: "7px 10px",
+    fontSize: 12,
+    fontWeight: 900,
   },
-  modalRow: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr auto", gap: 10 },
-  input: {
-    minHeight: 48,
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.22)",
-    color: "rgba(234,241,255,0.92)",
-    padding: "12px 14px",
-    outline: "none",
-    fontSize: 14,
+
+  planPriceRow: { display: "flex", alignItems: "baseline", gap: 8 },
+  planPrice: { fontSize: 40, fontWeight: 950, letterSpacing: -0.6 },
+  planPer: { opacity: 0.75, fontWeight: 900 },
+
+  planDesc: { fontSize: 13.5, opacity: 0.78, lineHeight: 1.6 },
+
+  planLine: { height: 1, background: "rgba(255,255,255,0.08)" },
+
+  planInc: { fontWeight: 950, opacity: 0.9 },
+
+  ul: { margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 10 },
+
+  li: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, opacity: 0.85, lineHeight: 1.55 },
+
+  liDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    marginTop: 5,
+    flex: "0 0 auto",
+    boxShadow: "0 0 18px rgba(2,243,220,0.25)",
   },
-  submitBtn: {
+
+  planBtn: {
     minHeight: 48,
-    padding: "12px 16px",
-    borderRadius: 16,
+    borderRadius: 14,
     border: "1px solid rgba(2,243,220,0.35)",
     background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     color: "#041015",
     fontWeight: 950,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  errorText: { marginTop: 10, fontSize: 12, color: "rgba(255,120,120,0.95)", fontWeight: 900 },
-
-  successBox: { marginTop: 12, display: "grid", gap: 10 },
-  successTitle: { fontSize: 18, fontWeight: 1000 as any },
-  successBody: { fontSize: 13, opacity: 0.82, lineHeight: 1.65 },
-  successBtn: {
-    marginTop: 4,
-    minHeight: 48,
     padding: "12px 16px",
-    borderRadius: 16,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(234,241,255,0.92)",
+    cursor: "pointer",
+    width: "100%",
+  },
+
+  footer: { maxWidth: 1180, margin: "0 auto", padding: "34px 0 10px" },
+
+  footerInner: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.03)",
+    padding: "14px 14px",
+  },
+
+  footerLeft: { display: "grid", gap: 3 },
+  footerBrand: { fontWeight: 950, letterSpacing: 0.5 },
+  footerMuted: { fontSize: 12, opacity: 0.7 },
+
+  footerRight: { display: "flex", alignItems: "center", gap: 10 },
+  footerBtn: {
+    minHeight: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(2,243,220,0.35)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #21AEF5 60%, #57FE72 100%)",
+    color: "#041015",
     fontWeight: 950,
+    padding: "10px 14px",
     cursor: "pointer",
   },
 };
