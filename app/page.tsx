@@ -1,5 +1,6 @@
 // app/page.tsx
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 const TIERS = [
   {
@@ -72,7 +73,6 @@ const TIERS = [
 export default function Page() {
   return (
     <main style={S.page}>
-      {/* Futuristic gradient background */}
       <div style={S.bg} aria-hidden="true">
         <div style={S.grid} />
         <div style={S.glowA} />
@@ -82,7 +82,6 @@ export default function Page() {
       </div>
 
       <div style={S.container}>
-        {/* Top bar */}
         <header style={S.topbar}>
           <div style={S.brand}>
             <div style={S.logo}>W</div>
@@ -102,7 +101,6 @@ export default function Page() {
           </div>
         </header>
 
-        {/* Hero */}
         <section style={S.hero}>
           <div style={S.heroLeft}>
             <div style={S.chip}>
@@ -116,8 +114,8 @@ export default function Page() {
             </h1>
 
             <p style={S.sub}>
-              Wovi replaces the planning and creation behind social media — captions, images,
-              and weekly posting plans — so you stay consistent without burnout.
+              Wovi replaces the planning and creation behind social media — captions,
+              images, and weekly posting plans — so you stay consistent without burnout.
             </p>
 
             <div style={S.heroButtons}>
@@ -128,27 +126,8 @@ export default function Page() {
                 Join waitlist
               </Link>
             </div>
-
-            <div style={S.heroStats}>
-              <div style={S.statCard}>
-                <div style={S.statLabel}>Works for</div>
-                <div style={S.statValue}>Any industry</div>
-                <div style={S.statHint}>Restaurants, HVAC, ecom, creators, startups</div>
-              </div>
-              <div style={S.statCard}>
-                <div style={S.statLabel}>Replaces</div>
-                <div style={S.statValue}>Daily brainstorming</div>
-                <div style={S.statHint}>No “what should I post?”</div>
-              </div>
-              <div style={S.statCard}>
-                <div style={S.statLabel}>Outcome</div>
-                <div style={S.statValue}>Consistency</div>
-                <div style={S.statHint}>Plans + content every week</div>
-              </div>
-            </div>
           </div>
 
-          {/* Right preview card */}
           <div style={S.heroRight}>
             <div style={S.previewCard}>
               <div style={S.previewTop}>
@@ -191,14 +170,12 @@ export default function Page() {
           </div>
         </section>
 
-        {/* Pricing */}
         <section id="pricing" style={S.section}>
           <div style={S.sectionHead}>
             <div>
               <h2 style={S.h2}>WOVI Pricing Plans</h2>
               <p style={S.p}>
-                <b>Pre-launch rule:</b> All plans currently lead to the waitlist.
-                View pricing now — activate at launch.
+                <b>Pre-launch rule:</b> All plans currently lead to the waitlist. View pricing now — activate at launch.
               </p>
             </div>
 
@@ -215,7 +192,9 @@ export default function Page() {
                 style={{
                   ...S.tierCard,
                   ...(t.highlight ? S.tierCardHighlight : {}),
-                  borderColor: t.highlight ? "rgba(2,243,220,0.55)" : "rgba(255,255,255,0.14)",
+                  borderColor: t.highlight
+                    ? "rgba(2,243,220,0.55)"
+                    : "rgba(255,255,255,0.14)",
                 }}
               >
                 <div style={S.tierHeader}>
@@ -268,98 +247,12 @@ export default function Page() {
                   {t.cta}
                 </Link>
 
-                <div style={S.smallMuted}>
-                  Pre-launch: choosing a plan takes you to the waitlist.
-                </div>
+                <div style={S.smallMuted}>Pre-launch: choosing a plan takes you to the waitlist.</div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Billing rules */}
-        <section style={S.section}>
-          <div style={S.sectionHeadSimple}>
-            <h2 style={S.h2}>Billing rules (when live)</h2>
-            <p style={S.p}>
-              Stripe subscriptions at launch. Monthly billing. Cancel anytime. Upgrade or downgrade anytime.
-              No contracts.
-            </p>
-          </div>
-
-          <div style={S.rulesGrid}>
-            {[
-              "All plans require a credit card",
-              "Free Trial still requires a card",
-              "Monthly recurring billing",
-              "Cancel anytime",
-              "Upgrade or downgrade anytime",
-              "No contracts",
-            ].map((x) => (
-              <div key={x} style={S.ruleCard}>
-                <span style={S.ruleDot} />
-                {x}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section style={S.section}>
-          <div style={S.sectionHeadSimple}>
-            <h2 style={S.h2}>How Wovi works</h2>
-            <p style={S.p}>
-              Tell Wovi what matters this week. Wovi creates the content and plan. You stay consistent.
-            </p>
-          </div>
-
-          <div style={S.steps}>
-            <div style={S.stepCard}>
-              <div style={S.stepNum}>1</div>
-              <div>
-                <div style={S.stepTitle}>Tell Wovi your goals</div>
-                <div style={S.stepBody}>
-                  Promotions, events, offers, announcements, brand tone, industry.
-                </div>
-              </div>
-            </div>
-            <div style={S.stepCard}>
-              <div style={S.stepNum}>2</div>
-              <div>
-                <div style={S.stepTitle}>Wovi generates content</div>
-                <div style={S.stepBody}>
-                  Captions, image ideas (or images), weekly plan, daily post suggestions.
-                </div>
-              </div>
-            </div>
-            <div style={S.stepCard}>
-              <div style={S.stepNum}>3</div>
-              <div>
-                <div style={S.stepTitle}>You post consistently</div>
-                <div style={S.stepBody}>
-                  No burnout. No guessing. No agencies.
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section style={S.ctaSection}>
-          <div style={S.ctaCard}>
-            <div>
-              <div style={S.ctaKicker}>Waitlist flow (right now)</div>
-              <div style={S.ctaTitle}>Pick a plan now. Get early access when we launch.</div>
-              <div style={S.ctaBody}>
-                Clicking any plan redirects to the waitlist. Enter email only. You’ll get notified at launch.
-              </div>
-            </div>
-            <Link href="/waitlist" style={S.ctaBtn}>
-              Go to waitlist
-            </Link>
-          </div>
-        </section>
-
-        {/* Footer */}
         <footer style={S.footer}>
           <div>© {new Date().getFullYear()} WOVI</div>
           <div style={S.footerLinks}>
@@ -376,7 +269,7 @@ export default function Page() {
   );
 }
 
-const S: Record<string, React.CSSProperties> = {
+const S: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     position: "relative",
@@ -437,20 +330,8 @@ const S: Record<string, React.CSSProperties> = {
     background:
       "radial-gradient(circle at 50% 10%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0.95) 100%)",
   },
-  container: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: 1160,
-    margin: "0 auto",
-    padding: "22px 18px 70px",
-  },
-  topbar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    padding: "8px 0 16px",
-  },
+  container: { position: "relative", zIndex: 1, maxWidth: 1160, margin: "0 auto", padding: "22px 18px 70px" },
+  topbar: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 0 16px" },
   brand: { display: "flex", alignItems: "center", gap: 10 },
   logo: {
     width: 44,
@@ -461,22 +342,13 @@ const S: Record<string, React.CSSProperties> = {
     fontWeight: 950,
     letterSpacing: 0.5,
     color: "#041015",
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
   },
   brandName: { fontWeight: 950, letterSpacing: 1.2, fontSize: 13 },
   brandTag: { fontSize: 12, opacity: 0.75, marginTop: 2 },
   topRight: { display: "flex", alignItems: "center", gap: 10 },
-  topLink: {
-    textDecoration: "none",
-    color: "#eaf0ff",
-    opacity: 0.8,
-    fontWeight: 800,
-    fontSize: 12,
-    padding: "10px 10px",
-    borderRadius: 12,
-  },
+  topLink: { textDecoration: "none", color: "#eaf0ff", opacity: 0.8, fontWeight: 800, fontSize: 12, padding: "10px 10px", borderRadius: 12 },
   topCta: {
     textDecoration: "none",
     color: "#041015",
@@ -484,18 +356,11 @@ const S: Record<string, React.CSSProperties> = {
     fontSize: 12,
     padding: "10px 14px",
     borderRadius: 14,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
     whiteSpace: "nowrap",
   },
-  hero: {
-    display: "grid",
-    gridTemplateColumns: "1.15fr 0.85fr",
-    gap: 16,
-    alignItems: "start",
-    marginTop: 8,
-  },
+  hero: { display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 16, alignItems: "start", marginTop: 8 },
   heroLeft: {
     borderRadius: 26,
     padding: 22,
@@ -504,346 +369,60 @@ const S: Record<string, React.CSSProperties> = {
     boxShadow: "0 32px 90px rgba(0,0,0,0.45)",
     backdropFilter: "blur(12px)",
   },
-  chip: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "8px 12px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: 0.4,
-    color: "#bffcff",
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  chipDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 0 22px rgba(2,243,220,0.55)",
-  },
+  chip: { display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 999, fontSize: 12, fontWeight: 900, color: "#bffcff", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.12)" },
+  chipDot: { width: 10, height: 10, borderRadius: 999, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 0 22px rgba(2,243,220,0.55)" },
   h1: { margin: "14px 0 10px", fontSize: 46, lineHeight: 1.05, letterSpacing: -0.8 },
   h1Accent: {
-    background:
-      "linear-gradient(90deg, #02F3DC 0%, #00EDEC 20%, #01DEF4 40%, #21AEF5 65%, #57FE72 100%)",
+    background: "linear-gradient(90deg, #02F3DC 0%, #00EDEC 20%, #01DEF4 40%, #21AEF5 65%, #57FE72 100%)",
     WebkitBackgroundClip: "text",
     backgroundClip: "text",
     color: "transparent",
   },
   sub: { margin: 0, fontSize: 16, lineHeight: 1.7, opacity: 0.85, maxWidth: 680 },
   heroButtons: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 },
-  primaryBtn: {
-    textDecoration: "none",
-    color: "#041015",
-    fontWeight: 950,
-    fontSize: 13,
-    padding: "12px 16px",
-    borderRadius: 16,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    whiteSpace: "nowrap",
-  },
-  secondaryBtn: {
-    textDecoration: "none",
-    color: "#eaf0ff",
-    fontWeight: 900,
-    fontSize: 13,
-    padding: "12px 16px",
-    borderRadius: 16,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    whiteSpace: "nowrap",
-  },
-  heroStats: {
-    marginTop: 16,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 10,
-  },
-  statCard: {
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  statLabel: { fontSize: 11, opacity: 0.7, fontWeight: 900, letterSpacing: 0.3 },
-  statValue: { marginTop: 6, fontSize: 13, fontWeight: 950 },
-  statHint: { marginTop: 6, fontSize: 12, opacity: 0.72, lineHeight: 1.5 },
+  primaryBtn: { textDecoration: "none", color: "#041015", fontWeight: 950, fontSize: 13, padding: "12px 16px", borderRadius: 16, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 18px 55px rgba(0,0,0,0.45)" },
+  secondaryBtn: { textDecoration: "none", color: "#eaf0ff", fontWeight: 900, fontSize: 13, padding: "12px 16px", borderRadius: 16, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)" },
   heroRight: {},
-  previewCard: {
-    borderRadius: 26,
-    padding: 18,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow: "0 32px 90px rgba(0,0,0,0.45)",
-    backdropFilter: "blur(12px)",
-  },
+  previewCard: { borderRadius: 26, padding: 18, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 90px rgba(0,0,0,0.45)", backdropFilter: "blur(12px)" },
   previewTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  previewTitle: { fontWeight: 950, fontSize: 13, letterSpacing: 0.2 },
-  previewPill: {
-    fontSize: 11,
-    fontWeight: 900,
-    opacity: 0.9,
-    padding: "6px 10px",
-    borderRadius: 999,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  previewGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 10,
-  },
-  previewItem: {
-    borderRadius: 18,
-    padding: 12,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  previewKicker: { fontSize: 11, opacity: 0.7, fontWeight: 900, letterSpacing: 0.3 },
-  previewMain: { marginTop: 6, fontSize: 12, fontWeight: 950, lineHeight: 1.4 },
-  previewSub: { marginTop: 6, fontSize: 12, opacity: 0.72, lineHeight: 1.5 },
-  previewFoot: {
-    marginTop: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  previewBtn: {
-    textDecoration: "none",
-    color: "#041015",
-    fontWeight: 950,
-    fontSize: 12,
-    padding: "10px 12px",
-    borderRadius: 14,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    whiteSpace: "nowrap",
-  },
+  previewTitle: { fontWeight: 950, fontSize: 13 },
+  previewPill: { fontSize: 11, fontWeight: 900, padding: "6px 10px", borderRadius: 999, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)" },
+  previewGrid: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 },
+  previewItem: { borderRadius: 18, padding: 12, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)" },
+  previewKicker: { fontSize: 11, opacity: 0.7, fontWeight: 900 },
+  previewMain: { marginTop: 6, fontSize: 12, fontWeight: 950 },
+  previewSub: { marginTop: 6, fontSize: 12, opacity: 0.72 },
+  previewFoot: { marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" },
+  previewBtn: { textDecoration: "none", color: "#041015", fontWeight: 950, fontSize: 12, padding: "10px 12px", borderRadius: 14, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 18px 55px rgba(0,0,0,0.45)" },
   mutedSmall: { fontSize: 12, opacity: 0.72 },
-  section: {
-    marginTop: 18,
-    borderRadius: 26,
-    padding: 18,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow: "0 32px 90px rgba(0,0,0,0.35)",
-    backdropFilter: "blur(12px)",
-  },
-  sectionHead: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  sectionHeadSimple: { marginBottom: 10 },
-  h2: { margin: 0, fontSize: 22, letterSpacing: -0.2 },
+  section: { marginTop: 18, borderRadius: 26, padding: 18, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 90px rgba(0,0,0,0.35)", backdropFilter: "blur(12px)" },
+  sectionHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
+  h2: { margin: 0, fontSize: 22 },
   p: { margin: "8px 0 0", opacity: 0.85, lineHeight: 1.7, maxWidth: 860 },
-  notice: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "10px 12px",
-    borderRadius: 999,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    fontSize: 12,
-    fontWeight: 900,
-    opacity: 0.9,
-  },
-  noticeDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 0 22px rgba(2,243,220,0.55)",
-  },
-  tierGrid: {
-    marginTop: 14,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 12,
-  },
-  tierCard: {
-    borderRadius: 22,
-    padding: 16,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: 520,
-  },
-  tierCardHighlight: {
-    boxShadow: "0 40px 120px rgba(0,0,0,0.55)",
-  },
-  tierHeader: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
-  tierName: { fontWeight: 950, fontSize: 16, letterSpacing: -0.2 },
-  tierBadge: {
-    marginTop: 8,
-    display: "inline-flex",
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.16)",
-    background: "rgba(255,255,255,0.04)",
-    fontSize: 12,
-    fontWeight: 900,
-  },
-  popular: {
-    fontSize: 11,
-    fontWeight: 950,
-    padding: "8px 10px",
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, rgba(2,243,220,0.25), rgba(33,174,245,0.18), rgba(87,254,114,0.18))",
-    border: "1px solid rgba(2,243,220,0.35)",
-    color: "#bffcff",
-    whiteSpace: "nowrap",
-  },
+  notice: { display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 999, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.12)", fontSize: 12, fontWeight: 900 },
+  noticeDot: { width: 10, height: 10, borderRadius: 999, background: "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)", boxShadow: "0 0 22px rgba(2,243,220,0.55)" },
+  tierGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 },
+  tierCard: { borderRadius: 22, padding: 16, background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.14)", display: "flex", flexDirection: "column", minHeight: 520 },
+  tierCardHighlight: { boxShadow: "0 40px 120px rgba(0,0,0,0.55)" },
+  tierHeader: { display: "flex", justifyContent: "space-between", gap: 10 },
+  tierName: { fontWeight: 950, fontSize: 16 },
+  tierBadge: { marginTop: 8, display: "inline-flex", padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.16)", background: "rgba(255,255,255,0.04)", fontSize: 12, fontWeight: 900 },
+  popular: { fontSize: 11, fontWeight: 950, padding: "8px 10px", borderRadius: 999, background: "linear-gradient(135deg, rgba(2,243,220,0.25), rgba(33,174,245,0.18), rgba(87,254,114,0.18))", border: "1px solid rgba(2,243,220,0.35)", color: "#bffcff" },
   priceRow: { display: "flex", alignItems: "baseline", gap: 8, marginTop: 10 },
-  price: { fontSize: 38, fontWeight: 950, letterSpacing: -0.8 },
+  price: { fontSize: 38, fontWeight: 950 },
   period: { fontSize: 13, opacity: 0.75, fontWeight: 900 },
   desc: { marginTop: 10, fontSize: 13, opacity: 0.82, lineHeight: 1.7 },
   hr: { marginTop: 14, height: 1, background: "rgba(255,255,255,0.12)" },
   blockTitle: { marginTop: 14, fontSize: 12, fontWeight: 950, opacity: 0.9 },
   list: { margin: "10px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 10 },
   li: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, opacity: 0.9, lineHeight: 1.55 },
-  dot: { width: 9, height: 9, borderRadius: 999, marginTop: 6, flex: "0 0 9px" },
+  dot: { width: 9, height: 9, borderRadius: 999, marginTop: 6 },
   bestForWrap: { marginTop: 14 },
   bestFor: { marginTop: 8, fontSize: 13, opacity: 0.8, lineHeight: 1.6 },
-  tierBtn: {
-    marginTop: "auto",
-    textDecoration: "none",
-    display: "block",
-    textAlign: "center",
-    fontWeight: 950,
-    fontSize: 13,
-    padding: "12px 14px",
-    borderRadius: 16,
-  },
-  tierBtnHighlight: {
-    boxShadow: "0 22px 70px rgba(0,0,0,0.55)",
-  },
+  tierBtn: { marginTop: "auto", textDecoration: "none", display: "block", textAlign: "center", fontWeight: 950, fontSize: 13, padding: "12px 14px", borderRadius: 16 },
+  tierBtnHighlight: { boxShadow: "0 22px 70px rgba(0,0,0,0.55)" },
   smallMuted: { marginTop: 10, fontSize: 12, opacity: 0.7 },
-  rulesGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 10,
-  },
-  ruleCard: {
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    fontSize: 13,
-    fontWeight: 900,
-    opacity: 0.92,
-  },
-  ruleDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 35%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 0 22px rgba(2,243,220,0.55)",
-    flex: "0 0 10px",
-  },
-  steps: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 10,
-  },
-  stepCard: {
-    borderRadius: 18,
-    padding: 14,
-    background: "rgba(0,0,0,0.22)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    display: "flex",
-    gap: 12,
-    alignItems: "flex-start",
-  },
-  stepNum: {
-    width: 34,
-    height: 34,
-    borderRadius: 14,
-    display: "grid",
-    placeItems: "center",
-    fontWeight: 950,
-    color: "#041015",
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    flex: "0 0 34px",
-  },
-  stepTitle: { fontWeight: 950, fontSize: 13 },
-  stepBody: { marginTop: 6, fontSize: 13, opacity: 0.78, lineHeight: 1.6 },
-  ctaSection: { marginTop: 18 },
-  ctaCard: {
-    borderRadius: 26,
-    padding: 18,
-    background:
-      "linear-gradient(135deg, rgba(2,243,220,0.14), rgba(33,174,245,0.12), rgba(87,254,114,0.12))",
-    border: "1px solid rgba(255,255,255,0.14)",
-    boxShadow: "0 32px 90px rgba(0,0,0,0.35)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  ctaKicker: { fontSize: 12, fontWeight: 950, opacity: 0.8 },
-  ctaTitle: { marginTop: 6, fontSize: 18, fontWeight: 950, letterSpacing: -0.2 },
-  ctaBody: { marginTop: 8, fontSize: 13, opacity: 0.82, lineHeight: 1.6, maxWidth: 760 },
-  ctaBtn: {
-    textDecoration: "none",
-    color: "#041015",
-    fontWeight: 950,
-    fontSize: 13,
-    padding: "12px 14px",
-    borderRadius: 16,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
-    whiteSpace: "nowrap",
-  },
-  footer: {
-    marginTop: 18,
-    paddingTop: 14,
-    borderTop: "1px solid rgba(255,255,255,0.12)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-    fontSize: 12,
-    opacity: 0.8,
-  },
+  footer: { marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 12, opacity: 0.8 },
   footerLinks: { display: "flex", gap: 14 },
   footerLink: { textDecoration: "none", color: "#eaf0ff", opacity: 0.85 },
 };
-
-/*
-COPY/PASTE INSTRUCTIONS:
-1) Open: app/page.tsx
-2) Delete everything
-3) Paste this entire file
-4) Save (Ctrl+S)
-5) Terminal:
-   git add .
-   git commit -m "Modern futuristic homepage"
-   git push
-*/
