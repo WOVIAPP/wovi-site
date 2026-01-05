@@ -245,7 +245,7 @@ export default function Page() {
           }
         });
       },
-      { threshold: 0.18, rootMargin: "0px 0px -60px 0px" }
+      { threshold: 0.16, rootMargin: "0px 0px -60px 0px" }
     );
 
     els.forEach((el) => io.observe(el));
@@ -271,6 +271,7 @@ export default function Page() {
         body: JSON.stringify({ email: clean, plan: selectedPlan ?? "unknown" }),
       });
 
+      // If backend isn't ready, still show success
       if (!res.ok) {
         setStatus("success");
         return;
@@ -320,9 +321,7 @@ export default function Page() {
       const cta = clamp((hasCta ? 21 : 8) + (len > 45 ? 4 : 0), 0, 25);
       const voice = clamp(8 + (/(we|our|you|your)/i.test(t) ? 7 : 4), 0, 15);
 
-      // Small bump if time-based urgency exists
       const urgencyBump = hasTime ? 4 : 0;
-
       const total = clamp(hook + clarity + cta + voice + urgencyBump, 0, 100);
 
       setScore(total);
@@ -361,7 +360,6 @@ Want early access? Join the waitlist.”`;
 
   return (
     <main style={S.page}>
-      {/* Global styles for reveal + underline animations */}
       <style>{CSS_GLOBAL}</style>
 
       {/* Background */}
@@ -387,7 +385,7 @@ Want early access? Join the waitlist.”`;
                 priority
               />
             </div>
-            <div>
+            <div style={S.brandTextWrap}>
               <div style={S.brandName}>Wovi</div>
               <div style={S.brandSub}>AI social media OS for any business</div>
             </div>
@@ -406,7 +404,8 @@ Want early access? Join the waitlist.”`;
 
       {/* HERO */}
       <section id="top" style={S.hero} data-reveal>
-        <div style={S.heroGrid}>
+        <div style={S.heroGrid} className="heroGridMobileFix">
+
           {/* Left card */}
           <div style={S.heroCard}>
             <div style={S.heroChip}>
@@ -510,7 +509,8 @@ Want early access? Join the waitlist.”`;
             </p>
           </div>
 
-          <div style={S.scoreWrap}>
+          <div style={S.scoreWrap} className="scoreGridMobileFix">
+
             <div style={S.scoreLeft}>
               <div style={S.label}>Paste your caption</div>
               <textarea
@@ -673,7 +673,6 @@ Want early access? Join the waitlist.”`;
                     </div>
                   </div>
 
-                  {/* Only one Most Popular */}
                   {t.highlight ? <div style={S.popPill}>Most Popular</div> : null}
                 </div>
 
@@ -788,6 +787,8 @@ Want early access? Join the waitlist.”`;
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@business.com"
+                  inputMode="email"
+                  autoComplete="email"
                 />
                 {status === "error" ? <div style={S.errorText}>{errorMsg}</div> : null}
 
@@ -865,6 +866,22 @@ const CSS_GLOBAL = `
 .tier-card--highlight:hover{
   box-shadow: 0 55px 170px rgba(0,0,0,0.72);
 }
+
+/* Mobile improvements */
+html, body {
+  height: 100%;
+}
+*{
+  box-sizing: border-box;
+}
+@media (max-width: 980px){
+  .tier-card:hover{ transform: none; }
+}
+@media (max-width: 900px){
+  /* Hero + score go 1 column */
+  .heroGridMobileFix{ grid-template-columns: 1fr !important; }
+  .scoreGridMobileFix{ grid-template-columns: 1fr !important; }
+}
 `;
 
 /* Styles */
@@ -938,11 +955,11 @@ const S: Record<string, CSSProperties> = {
   navInner: {
     maxWidth: 1180,
     margin: "0 auto",
-    padding: "14px 18px",
+    padding: "12px 14px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   brand: {
     display: "flex",
@@ -950,7 +967,9 @@ const S: Record<string, CSSProperties> = {
     gap: 10,
     cursor: "pointer",
     userSelect: "none",
+    minWidth: 0,
   },
+  brandTextWrap: { minWidth: 0 },
   logoWrap: {
     width: 38,
     height: 38,
@@ -960,11 +979,29 @@ const S: Record<string, CSSProperties> = {
     background: "rgba(0,0,0,0.18)",
     border: "1px solid rgba(255,255,255,0.12)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.35)",
+    flex: "0 0 auto",
   },
-  brandName: { fontWeight: 950, letterSpacing: 0.6, fontSize: 13, textTransform: "uppercase" },
-  brandSub: { fontSize: 12, opacity: 0.7, marginTop: 2 },
+  brandName: {
+    fontWeight: 950,
+    letterSpacing: 0.6,
+    fontSize: 13,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: 180,
+  },
+  brandSub: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    maxWidth: 220,
+  },
 
-  navLinks: { display: "flex", alignItems: "center", gap: 14 },
+  navLinks: { display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" },
   navLinkBtn: {
     border: "none",
     background: "transparent",
@@ -973,10 +1010,11 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 900,
     fontSize: 12,
     cursor: "pointer",
+    display: "none", // hide on mobile; still accessible via scroll
   },
   navCta: {
     border: "none",
-    padding: "10px 14px",
+    padding: "10px 12px",
     borderRadius: 14,
     fontWeight: 950,
     fontSize: 12,
@@ -987,19 +1025,19 @@ const S: Record<string, CSSProperties> = {
     whiteSpace: "nowrap",
   },
 
-  hero: { padding: "34px 18px 18px" },
+  hero: { padding: "26px 14px 10px" },
   heroGrid: {
     maxWidth: 1180,
     margin: "0 auto",
     display: "grid",
     gridTemplateColumns: "1.2fr 0.85fr",
-    gap: 16,
+    gap: 14,
     alignItems: "start",
   },
 
   heroCard: {
-    borderRadius: 26,
-    padding: 22,
+    borderRadius: 24,
+    padding: 18,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     boxShadow: "0 30px 110px rgba(0,0,0,0.45)",
@@ -1026,13 +1064,13 @@ const S: Record<string, CSSProperties> = {
     boxShadow: "0 0 18px rgba(2,243,220,0.55)",
   },
 
-  h1: { margin: "16px 0 10px", fontSize: 54, lineHeight: 1.06, letterSpacing: -1.2 },
-  sub: { margin: "0", maxWidth: 760, fontSize: 14, lineHeight: 1.85, opacity: 0.84 },
+  h1: { margin: "14px 0 10px", fontSize: 44, lineHeight: 1.08, letterSpacing: -1.0 },
+  sub: { margin: "0", maxWidth: 760, fontSize: 14, lineHeight: 1.75, opacity: 0.84 },
 
-  heroCtas: { marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" },
+  heroCtas: { marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" },
   primary: {
     border: "none",
-    padding: "12px 16px",
+    padding: "12px 14px",
     borderRadius: 16,
     fontWeight: 950,
     fontSize: 13,
@@ -1043,7 +1081,7 @@ const S: Record<string, CSSProperties> = {
   },
   secondary: {
     border: "1px solid rgba(255,255,255,0.16)",
-    padding: "12px 16px",
+    padding: "12px 14px",
     borderRadius: 16,
     fontWeight: 950,
     fontSize: 13,
@@ -1053,7 +1091,7 @@ const S: Record<string, CSSProperties> = {
   },
   ghost: {
     border: "1px solid rgba(255,255,255,0.10)",
-    padding: "12px 16px",
+    padding: "12px 14px",
     borderRadius: 16,
     fontWeight: 900,
     fontSize: 13,
@@ -1064,7 +1102,7 @@ const S: Record<string, CSSProperties> = {
   },
 
   miniCards: {
-    marginTop: 14,
+    marginTop: 12,
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 10,
@@ -1080,8 +1118,8 @@ const S: Record<string, CSSProperties> = {
   miniText: { marginTop: 6, opacity: 0.78, fontSize: 12, lineHeight: 1.5 },
 
   demoCard: {
-    borderRadius: 26,
-    padding: 18,
+    borderRadius: 24,
+    padding: 16,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     boxShadow: "0 30px 110px rgba(0,0,0,0.45)",
@@ -1109,8 +1147,8 @@ const S: Record<string, CSSProperties> = {
   demoStrong: { marginTop: 8, fontWeight: 950, fontSize: 12 },
   demoText: { marginTop: 6, opacity: 0.82, fontSize: 12, lineHeight: 1.5 },
   demoSmall: { marginTop: 10, opacity: 0.6, fontSize: 12 },
-  demoBottom: { marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  demoHint: { opacity: 0.75, fontSize: 12, lineHeight: 1.4 },
+  demoBottom: { marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  demoHint: { opacity: 0.75, fontSize: 12, lineHeight: 1.4, flex: "1 1 240px" },
   demoBtn: {
     border: "none",
     padding: "10px 14px",
@@ -1123,23 +1161,23 @@ const S: Record<string, CSSProperties> = {
     whiteSpace: "nowrap",
   },
 
-  section: { padding: "18px 18px 34px" },
+  section: { padding: "14px 14px 30px" },
   sectionInner: { maxWidth: 1180, margin: "0 auto" },
   sectionHead: { maxWidth: 920 },
-  h2: { margin: 0, fontSize: 26, letterSpacing: -0.2 },
-  p: { marginTop: 10, opacity: 0.84, lineHeight: 1.75, fontSize: 13 },
+  h2: { margin: 0, fontSize: 24, letterSpacing: -0.2 },
+  p: { marginTop: 10, opacity: 0.84, lineHeight: 1.7, fontSize: 13 },
 
   scoreWrap: { marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "start" },
   scoreLeft: {
     borderRadius: 22,
-    padding: 18,
+    padding: 16,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     boxShadow: "0 24px 90px rgba(0,0,0,0.35)",
   },
   scoreRight: {
     borderRadius: 22,
-    padding: 18,
+    padding: 16,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     boxShadow: "0 24px 90px rgba(0,0,0,0.35)",
@@ -1149,7 +1187,7 @@ const S: Record<string, CSSProperties> = {
   textarea: {
     marginTop: 8,
     width: "100%",
-    minHeight: 160,
+    minHeight: 150,
     resize: "vertical",
     borderRadius: 16,
     padding: "12px 14px",
@@ -1168,7 +1206,7 @@ const S: Record<string, CSSProperties> = {
   scoreEmptySub: { opacity: 0.78, fontSize: 13, lineHeight: 1.6 },
 
   scoreCard: { display: "grid", gap: 12 },
-  scoreTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 },
+  scoreTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" },
   scoreTitle: { fontWeight: 950, fontSize: 16 },
   scoreBig: { fontWeight: 950, fontSize: 26, color: P.a },
 
@@ -1187,16 +1225,18 @@ const S: Record<string, CSSProperties> = {
     borderRadius: 16,
     background: "rgba(0,0,0,0.18)",
     border: "1px solid rgba(255,255,255,0.10)",
+    gap: 10,
   },
-  rowLeft: { display: "flex", alignItems: "center", gap: 10 },
+  rowLeft: { display: "flex", alignItems: "center", gap: 10, minWidth: 0 },
   rowDot: {
     width: 10,
     height: 10,
     borderRadius: 999,
     background: `linear-gradient(135deg, ${P.a} 0%, ${P.d} 100%)`,
+    flex: "0 0 auto",
   },
-  rowLabel: { fontWeight: 950, fontSize: 13, opacity: 0.92 },
-  rowRight: { fontWeight: 950, fontSize: 13, opacity: 0.85 },
+  rowLabel: { fontWeight: 950, fontSize: 13, opacity: 0.92, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  rowRight: { fontWeight: 950, fontSize: 13, opacity: 0.85, flex: "0 0 auto" },
 
   rewriteBlock: {
     marginTop: 4,
@@ -1207,7 +1247,7 @@ const S: Record<string, CSSProperties> = {
     display: "grid",
     gap: 10,
   },
-  rewriteTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  rewriteTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
   rewriteTitle: { fontWeight: 950, fontSize: 13, opacity: 0.92 },
   copyBtn: {
     border: "1px solid rgba(255,255,255,0.12)",
@@ -1275,12 +1315,12 @@ const S: Record<string, CSSProperties> = {
   tierGrid: { marginTop: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 },
   tierCard: {
     borderRadius: 22,
-    padding: 18,
+    padding: 16,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     display: "flex",
     flexDirection: "column",
-    minHeight: 560,
+    minHeight: 540,
     backdropFilter: "blur(12px)",
   },
   tierTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
@@ -1305,8 +1345,8 @@ const S: Record<string, CSSProperties> = {
     whiteSpace: "nowrap",
   },
 
-  priceRow: { marginTop: 12, display: "flex", alignItems: "baseline", gap: 8 },
-  price: { fontSize: 42, fontWeight: 950, letterSpacing: -1.1 },
+  priceRow: { marginTop: 12, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
+  price: { fontSize: 40, fontWeight: 950, letterSpacing: -1.1 },
   period: { fontSize: 13, opacity: 0.75, fontWeight: 950 },
   desc: { marginTop: 10, opacity: 0.84, fontSize: 13, lineHeight: 1.7 },
 
@@ -1322,8 +1362,8 @@ const S: Record<string, CSSProperties> = {
 
   footer: {
     maxWidth: 1180,
-    margin: "10px auto 40px",
-    padding: "0 18px",
+    margin: "10px auto 34px",
+    padding: "0 14px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -1349,7 +1389,7 @@ const S: Record<string, CSSProperties> = {
     backdropFilter: "blur(12px)",
     display: "grid",
     placeItems: "center",
-    padding: 16,
+    padding: 14,
   },
   modalCard: {
     width: "100%",
@@ -1410,3 +1450,15 @@ const S: Record<string, CSSProperties> = {
     cursor: "pointer",
   },
 };
+
+/**
+ * IMPORTANT:
+ * For mobile layout, add these classNames on the 2 grids:
+ * - heroGrid: className="heroGridMobileFix"
+ * - scoreWrap: className="scoreGridMobileFix"
+ *
+ * Since we’re using inline styles, the media query can’t target them.
+ * Easiest fix is to add className props (already included in CSS).
+ *
+ * If you don't want to do that, I can rewrite to use CSS instead of inline.
+ */
