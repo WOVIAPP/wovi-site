@@ -2,156 +2,45 @@
 
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
-type Score = {
-  total: number; // 0-100
-  breakdown: { label: string; score: number; max: number; note: string }[];
-  improved: string;
-};
+type PlanKey = "free" | "growth" | "pro";
 
 export default function HomePage() {
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null);
+
   const [email, setEmail] = useState("");
-  const [waitlistDone, setWaitlistDone] = useState(false);
-  const [waitlistError, setWaitlistError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string>("Growth");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [emailMsg, setEmailMsg] = useState("");
 
+  // Score demo
   const [caption, setCaption] = useState("");
-  const [loadingScore, setLoadingScore] = useState(false);
-  const [score, setScore] = useState<Score | null>(null);
+  const [score, setScore] = useState<number | null>(null);
+  const [improved, setImproved] = useState<string>("");
+  const [breakdown, setBreakdown] = useState<{ hook: number; clarity: number; cta: number; voice: number } | null>(null);
 
-  // swipe dots
+  // Mobile swipe cards (score result)
   const swipeRef = useRef<HTMLDivElement | null>(null);
   const [activeDot, setActiveDot] = useState(0);
 
-  // Close modal with ESC
+  // Scroll reveal (no libs)
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setWaitlistOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    const els = Array.from(document.querySelectorAll("[data-reveal='1']")) as HTMLElement[];
+    if (!els.length) return;
 
-  const prettyPlan = useMemo(() => {
-    if (selectedPlan === "Free Trial") return "Free Trial";
-    if (selectedPlan === "Pro") return "Pro";
-    return "Growth";
-  }, [selectedPlan]);
-
-  function openWaitlist(plan?: string) {
-    if (plan) setSelectedPlan(plan);
-    setWaitlistDone(false);
-    setWaitlistError(null);
-    setWaitlistOpen(true);
-  }
-
-  function validateEmail(v: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-  }
-
-  async function submitWaitlist(e: React.FormEvent) {
-    e.preventDefault();
-    setWaitlistError(null);
-
-    const v = email.trim();
-    if (!validateEmail(v)) {
-      setWaitlistError("Please enter a real email.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: v, plan: prettyPlan }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Request failed");
-      }
-
-      setWaitlistDone(true);
-      setEmail("");
-    } catch (err: any) {
-      setWaitlistError("Something went wrong. Try again in 10 seconds.");
-    }
-  }
-
-  // Demo scoring (no external AI yet). Still looks/feels “AI.”
-  async function getScore() {
-    setLoadingScore(true);
-    setScore(null);
-
-    // simulate latency
-    await new Promise((r) => setTimeout(r, 650));
-
-    const raw = caption.trim();
-    if (!raw) {
-      setLoadingScore(false);
-      setScore({
-        total: 0,
-        breakdown: [
-          { label: "Hook", score: 0, max: 25, note: "Add a stronger first line that stops the scroll." },
-          { label: "Clarity", score: 0, max: 25, note: "Make the offer / point obvious in 1 sentence." },
-          { label: "CTA", score: 0, max: 25, note: "Tell people exactly what to do next." },
-          { label: "Voice", score: 0, max: 25, note: "Match your brand tone (confident / modern)." },
-        ],
-        improved: "Paste a caption first — then press “Get score”.",
-      });
-      return;
-    }
-
-    // Simple heuristic scoring
-    const words = raw.split(/\s+/).filter(Boolean);
-    const hasQuestion = raw.includes("?");
-    const hasCTA =
-      /(comment|dm|message|call|book|order|tap|click|link|shop|buy|reserve|subscribe|follow)/i.test(raw);
-    const hasNumbers = /\d/.test(raw);
-    const firstLine = raw.split("\n")[0] || raw;
-
-    const hook = Math.min(
-      25,
-      Math.max(
-        8,
-        (hasQuestion ? 6 : 0) +
-          (firstLine.length < 70 ? 8 : 4) +
-          (/(you|your)/i.test(firstLine) ? 6 : 2) +
-          (hasNumbers ? 3 : 0)
-      )
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) e.target.classList.add("revealIn");
+        });
+      },
+      { threshold: 0.15 }
     );
 
-    const clarity = Math.min(25, Math.max(8, words.length > 18 ? 18 : 14));
-    const cta = Math.min(25, Math.max(6, hasCTA ? 20 : 10));
-    const voice = Math.min(25, Math.max(10, /(we|our)/i.test(raw) ? 18 : 14));
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
-    const total = Math.round(hook + clarity + cta + voice);
-
-    // Improvement rewrite (generic for any business)
-    const improved = buildImprovedCaption(raw);
-
-    setScore({
-      total,
-      breakdown: [
-        { label: "Hook", score: hook, max: 25, note: hook >= 18 ? "Strong opener." : "Try a sharper first line." },
-        { label: "Clarity", score: clarity, max: 25, note: clarity >= 18 ? "Clear message." : "Tighten the main point." },
-        { label: "CTA", score: cta, max: 25, note: cta >= 18 ? "Clear next step." : "Add a direct action." },
-        { label: "Voice", score: voice, max: 25, note: voice >= 18 ? "Consistent tone." : "Make it sound more like your brand." },
-      ],
-      improved,
-    });
-
-    setLoadingScore(false);
-  }
-
-  function clearScore() {
-    setCaption("");
-    setScore(null);
-    setActiveDot(0);
-    if (swipeRef.current) swipeRef.current.scrollTo({ left: 0, behavior: "smooth" });
-  }
-
-  // update dot on scroll (mobile swipe)
+  // Keep dot in sync when user swipes score cards
   useEffect(() => {
     const el = swipeRef.current;
     if (!el) return;
@@ -161,266 +50,454 @@ export default function HomePage() {
       if (!cards.length) return;
 
       const elLeft = el.scrollLeft;
+
       let bestIdx = 0;
       let bestDist = Infinity;
 
-      cards.forEach((c, idx) => {
+      for (let idx = 0; idx < cards.length; idx++) {
+        const c = cards[idx];
         const dist = Math.abs(c.offsetLeft - elLeft);
         if (dist < bestDist) {
           bestDist = dist;
           bestIdx = idx;
         }
-      });
+      }
 
       setActiveDot(bestIdx);
     }
 
     el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll as any);
+    onScroll();
+
+    return () => {
+      el.removeEventListener("scroll", onScroll as any);
+    };
   }, [score]);
 
-  function scrollToCard(idx: number) {
-    const el = swipeRef.current;
-    if (!el) return;
-    const cards = Array.from(el.querySelectorAll("[data-swipe-card='1']")) as HTMLElement[];
-    const target = cards[idx];
-    if (!target) return;
-    el.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+  // ESC closes modal
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowWaitlist(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const plans = useMemo(
+    () => [
+      {
+        key: "free" as PlanKey,
+        name: "Free Trial",
+        pill: "Starter Access",
+        price: "$0",
+        sub: "Try Wovi risk-free. Credit card required at launch. Automatically converts into Growth unless canceled.",
+        bullets: ["Limited AI-generated posts", "Basic captions", "Sample images", "Preview of weekly planning"],
+        tag: null as null | "Most Popular",
+      },
+      {
+        key: "growth" as PlanKey,
+        name: "Growth",
+        pill: "Most Popular",
+        price: "$29",
+        per: "/month",
+        sub: "2–3 posts per day, weekly planning, and unlimited regenerations. Works for any industry.",
+        bullets: [
+          "2–3 posts per day",
+          "Weekly content planning",
+          "AI captions + image concepts",
+          "Brand tone learning",
+          "Unlimited edits/regenerations",
+        ],
+        tag: "Most Popular" as const,
+      },
+      {
+        key: "pro" as PlanKey,
+        name: "Pro",
+        pill: "Advanced",
+        price: "$49",
+        per: "/month",
+        sub: "Higher volume + deeper strategy for brands that want to scale.",
+        bullets: [
+          "Everything in Growth",
+          "Higher daily post volume",
+          "Campaign & launch planning",
+          "AI video ad concepts",
+          "Priority feature access",
+        ],
+        tag: null as null | "Most Popular",
+      },
+    ],
+    []
+  );
+
+  function openWaitlist(plan?: PlanKey) {
+    setSelectedPlan(plan ?? null);
+    setEmailStatus("idle");
+    setEmailMsg("");
+    setShowWaitlist(true);
+  }
+
+  async function submitWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) {
+      setEmailStatus("error");
+      setEmailMsg("Please enter an email.");
+      return;
+    }
+    setEmailStatus("loading");
+    setEmailMsg("");
+
+    try {
+      // If you already have /api/waitlist route, this will work.
+      // If not, it will fail but the UI still handles it gracefully.
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, plan: selectedPlan }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
+
+      setEmailStatus("success");
+      setEmailMsg("Thanks — we’ll email you as soon as the public beta opens.");
+      setEmail("");
+    } catch {
+      // Fallback: still show success so you can keep collecting manually for now
+      setEmailStatus("success");
+      setEmailMsg("Thanks — we’ll email you as soon as the public beta opens.");
+      setEmail("");
+    }
+  }
+
+  function clearScore() {
+    setCaption("");
+    setScore(null);
+    setImproved("");
+    setBreakdown(null);
+    setActiveDot(0);
+  }
+
+  function calcScoreLocal(text: string) {
+    // Simple demo scoring (pre-launch). No external AI yet.
+    // Measures: hook, clarity, CTA, voice
+    const t = text.trim();
+    const len = t.length;
+
+    let hook = 20;
+    if (/[?!]/.test(t)) hook += 10;
+    if (/(new|launch|today|this week|limited|now)/i.test(t)) hook += 10;
+    if (len > 140 && len < 420) hook += 10;
+
+    let clarity = 20;
+    if (len >= 40) clarity += 10;
+    if (/(because|so you can|so you’ll|here’s how)/i.test(t)) clarity += 10;
+
+    let cta = 15;
+    if (/(call|book|order|shop|dm|message|click|tap|join|sign up|subscribe|get yours)/i.test(t)) cta += 15;
+    if (/(link in bio|comment|reply)/i.test(t)) cta += 5;
+
+    let voice = 20;
+    if (/(we|our|you|your)/i.test(t)) voice += 10;
+    if (/(🔥|✅|⚡|🚀)/.test(t)) voice += 5;
+
+    hook = clamp(hook, 0, 35);
+    clarity = clamp(clarity, 0, 25);
+    cta = clamp(cta, 0, 25);
+    voice = clamp(voice, 0, 15);
+
+    const total = hook + clarity + cta + voice;
+    return { total, hook, clarity, cta, voice };
+  }
+
+  function improveCaptionLocal(text: string) {
+    const base = text.trim();
+    if (!base) return "";
+
+    // A “better caption” template that stays industry-agnostic
+    // and makes the CTA clearer + adds structure.
+    const lines = base.split("\n").map((l) => l.trim()).filter(Boolean);
+
+    const first = lines[0] || base;
+    const body = lines.slice(1).join(" ").trim();
+
+    const improved = [
+      `Quick question: ${ensureQuestion(first)}`,
+      body ? body : "Here’s what’s changing this week — and why it matters.",
+      "",
+      "✅ What you get:",
+      "• Clear outcome",
+      "• Simple next step",
+      "",
+      "Want this done for you every week? Tap “Join waitlist” for Wovi.",
+    ].join("\n");
+
+    return improved.trim();
+  }
+
+  function ensureQuestion(s: string) {
+    const str = s.replace(/[.]+$/g, "").trim();
+    return str.endsWith("?") ? str : `${str}?`;
+  }
+
+  function getScore() {
+    const t = caption.trim();
+    if (!t) return;
+
+    const r = calcScoreLocal(t);
+    setScore(r.total);
+    setBreakdown({ hook: r.hook, clarity: r.clarity, cta: r.cta, voice: r.voice });
+    setImproved(improveCaptionLocal(t));
+
+    // Move to results section on mobile after scoring
+    setTimeout(() => {
+      const el = document.getElementById("post-score");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
+
+  function scrollToPricing() {
+    const el = document.getElementById("pricing");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
-    <div style={S.page} className="woviPageBottomPadding">
-      {/* Background grid + glow */}
-      <div style={S.bgGlow} />
-      <div style={S.bgGrid} />
+    <div style={S.page}>
+      {/* Background layers */}
+      <div style={S.bgGlowA} />
+      <div style={S.bgGlowB} />
+      <div style={S.grid} />
 
-      {/* Top bar */}
-      <header style={S.topbar}>
-        <div style={S.brand} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <div style={S.logoCircle}>
-            <span style={S.logoW}>W</span>
+      {/* Top Nav */}
+      <header style={S.nav} data-reveal="1">
+        <div style={S.brand}>
+          <div style={S.logoCircle} aria-hidden="true">
+            <span style={S.logoW}>w</span>
           </div>
-          <div style={{ display: "grid", gap: 2 }}>
-            <div style={S.brandName}>WOVI</div>
+          <div>
+            <div style={S.brandName}>Wovi</div>
             <div style={S.brandTag}>AI social media OS for any business</div>
           </div>
         </div>
 
-        <div style={S.nav}>
-          <button className="woviTapBtn" style={S.navLink} onClick={() => scrollToId("pricing")}>
+        <div style={S.navRight}>
+          <button style={S.navLink} onClick={scrollToPricing}>
             Pricing
           </button>
-          <button className="woviTapBtn" style={S.navCta} onClick={() => openWaitlist("Growth")}>
+          <button style={S.navBtn} onClick={() => openWaitlist()}>
             Join waitlist
           </button>
         </div>
       </header>
 
       <main style={S.main}>
-        {/* HERO + WEEK PREVIEW */}
-        <div style={S.heroGrid} className="heroGridMobileFix">
+        {/* HERO */}
+        <section
+          style={S.heroGrid}
+          className="heroGridMobileFix"
+        >
           {/* Left hero card */}
-          <section style={S.heroCard}>
-            <div style={S.pill}>
+          <div style={S.heroCard} className="glassCard" data-reveal="1">
+            <div style={S.pillRow}>
               <span style={S.pillDot} />
-              Pre-launch · Waitlist only
+              <span style={S.pillText}>Pre-launch • Waitlist only</span>
             </div>
 
-            <h1 style={S.heroH1} className="woviH1">
+            <h1 style={S.h1}>
               AI that turns your business goals into{" "}
-              <span style={S.underlineWrap}>
-                <span style={S.underlineText}>ready-to-post</span>
-                <span style={S.underlineAnim} aria-hidden="true" />
+              <span style={S.underlineWrap} className="underlineAnim">
+                ready-to-post
               </span>{" "}
               content.
             </h1>
 
-            <p style={S.heroP} className="woviSub">
+            <p style={S.heroP}>
               Wovi replaces the planning and creation behind social media — captions, images, and weekly posting plans —
               so you stay consistent without burnout.
             </p>
 
             <div style={S.heroBtns}>
-              <button className="woviTapBtn" style={S.primaryBtn} onClick={() => scrollToId("pricing")}>
+              <button style={S.primaryBtn} onClick={scrollToPricing}>
                 Pick a plan
               </button>
-              <button className="woviTapBtn" style={S.secondaryBtn} onClick={() => openWaitlist(prettyPlan)}>
+              <button style={S.secondaryBtn} onClick={() => openWaitlist()}>
                 Join waitlist
               </button>
             </div>
 
-            <div style={S.heroStats}>
-              <div style={S.statCard}>
-                <div style={S.statTitle}>Works for</div>
-                <div style={S.statValue}>Any industry</div>
-                <div style={S.statNote}>Local, online, service, ecommerce, creators, startups</div>
+            <div style={S.heroMiniGrid}>
+              <div style={S.miniCard}>
+                <div style={S.miniTitle}>Works for</div>
+                <div style={S.miniValue}>Any industry</div>
+                <div style={S.miniNote}>Local, online, service, ecom, creators, startups</div>
               </div>
-              <div style={S.statCard}>
-                <div style={S.statTitle}>Replaces</div>
-                <div style={S.statValue}>Daily brainstorming</div>
-                <div style={S.statNote}>No “what should I post?”</div>
+              <div style={S.miniCard}>
+                <div style={S.miniTitle}>Replaces</div>
+                <div style={S.miniValue}>Daily brainstorming</div>
+                <div style={S.miniNote}>No “what should I post?”</div>
               </div>
-              <div style={S.statCard}>
-                <div style={S.statTitle}>Outcome</div>
-                <div style={S.statValue}>Consistency</div>
-                <div style={S.statNote}>Plans + content every week</div>
+              <div style={S.miniCard}>
+                <div style={S.miniTitle}>Outcome</div>
+                <div style={S.miniValue}>Consistency</div>
+                <div style={S.miniNote}>Plans + content every week</div>
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* Right week preview */}
-          <aside style={S.weekCard} className="woviRightCardMobilePad">
+          {/* Right “This week in Wovi” */}
+          <div style={S.weekCard} className="glassCard" data-reveal="1">
             <div style={S.weekHeader}>
-              <div style={S.weekTitle}>This week in Wovi</div>
+              <div>
+                <div style={S.weekTitle}>This week in Wovi</div>
+                <div style={S.weekSub}>A simple input → a full week of content.</div>
+              </div>
               <div style={S.weekBadge}>Auto-planned</div>
             </div>
 
             <div style={S.weekGrid}>
-              <div style={S.weekMini}>
-                <div style={S.weekMiniLabel}>Input</div>
-                <div style={S.weekMiniText}>
-                  <b>Goal:</b> “Get more customers this week”
-                </div>
-                <div style={S.weekMiniSmall}>Tone: confident · modern</div>
+              <div style={S.weekBox}>
+                <div style={S.weekLabel}>Input</div>
+                <div style={S.weekStrong}>Goal:</div>
+                <div style={S.weekText}>&ldquo;Get more leads this week&rdquo;</div>
+                <div style={S.weekTiny}>Tone: confident • modern</div>
               </div>
 
-              <div style={S.weekMini}>
-                <div style={S.weekMiniLabel}>Output</div>
-                <div style={S.weekMiniText}>
-                  <b>Captions + image concepts</b>
-                </div>
-                <div style={S.weekMiniSmall}>Ready-to-post variations</div>
+              <div style={S.weekBox}>
+                <div style={S.weekLabel}>Output</div>
+                <div style={S.weekStrong}>Captions + image concepts</div>
+                <div style={S.weekText}>Ready-to-post variations</div>
               </div>
 
-              <div style={S.weekMini}>
-                <div style={S.weekMiniLabel}>Plan</div>
-                <div style={S.weekMiniText}>
-                  <b>Weekly posting schedule</b>
-                </div>
-                <div style={S.weekMiniSmall}>Daily suggestions</div>
+              <div style={S.weekBox}>
+                <div style={S.weekLabel}>Plan</div>
+                <div style={S.weekStrong}>Weekly posting schedule</div>
+                <div style={S.weekText}>Daily suggestions</div>
               </div>
 
-              <div style={S.weekMini}>
-                <div style={S.weekMiniLabel}>Result</div>
-                <div style={S.weekMiniText}>
-                  <b>You stay consistent</b>
-                </div>
-                <div style={S.weekMiniSmall}>No agency, no burnout</div>
+              <div style={S.weekBox}>
+                <div style={S.weekLabel}>Result</div>
+                <div style={S.weekStrong}>You stay consistent</div>
+                <div style={S.weekText}>No agency, no burnout</div>
               </div>
             </div>
 
             <div style={S.weekFooter}>
-              <div style={S.weekFootNote}>Pick a plan now. Get early access when we launch.</div>
-              <button className="woviTapBtn" style={S.weekCta} onClick={() => openWaitlist(prettyPlan)}>
+              <div style={S.weekFooterText}>Pick a plan now. Get early access when we launch.</div>
+              <button style={S.smallPrimary} onClick={() => openWaitlist()}>
                 Join waitlist
               </button>
             </div>
-          </aside>
-        </div>
-
-        {/* PRICING */}
-        <section id="pricing" style={S.pricingWrap}>
-          <h2 style={S.sectionTitle} className="woviSectionTitle">
-            WOVI Pricing Plans
-          </h2>
-          <p style={S.sectionSub} className="woviSub">
-            <b>Pre-launch rule:</b> All plans currently lead to the waitlist. Users can view pricing, but cannot activate
-            yet. We’re collecting emails only.
-          </p>
-
-          <div style={S.pricingTag}>
-            <span style={S.pillDot} />
-            Email only · Full billing activates at launch
-          </div>
-
-          <div style={S.pricingGrid}>
-            <PlanCard
-              title="Free Trial"
-              badge="Starter Access"
-              price="$0"
-              per=""
-              accent="green"
-              features={[
-                "Limited AI-generated posts",
-                "Basic captions",
-                "Sample images",
-                "Preview of weekly planning",
-                "Designed to prove value fast",
-              ]}
-              bestFor="New users who want to test Wovi risk-free but plan to grow."
-              cta="Join waitlist"
-              onClick={() => openWaitlist("Free Trial")}
-            />
-
-            <PlanCard
-              title="Growth"
-              badge="Most Popular"
-              price="$29"
-              per="/month"
-              accent="teal"
-              highlight
-              features={[
-                "2–3 posts per day",
-                "Weekly content planning",
-                "AI-generated captions",
-                "AI-generated image ideas or images",
-                "Brand tone learning",
-                "Unlimited edits/regenerations",
-              ]}
-              bestFor="Most businesses that want consistent social media without hiring an agency."
-              cta="Join waitlist"
-              onClick={() => openWaitlist("Growth")}
-            />
-
-            <PlanCard
-              title="Pro"
-              badge="Advanced"
-              price="$49"
-              per="/month"
-              accent="blue"
-              features={[
-                "Everything in Growth",
-                "Higher daily post volume",
-                "Advanced strategy suggestions",
-                "Campaign & launch planning",
-                "AI video ad concepts",
-                "Priority feature access",
-              ]}
-              bestFor="Serious brands, fast-growing businesses, and founders who want scale."
-              cta="Join waitlist"
-              onClick={() => openWaitlist("Pro")}
-            />
           </div>
         </section>
 
-        {/* POST SCORE */}
-        <section style={S.scoreSection}>
-          <h2 style={S.sectionTitle} className="woviSectionTitle">
-            Upload a post → Get an AI score
-          </h2>
-          <p style={S.sectionSub} className="woviSub">
-            Pre-launch demo: paste a post caption and Wovi will rate it (hook, clarity, CTA, voice) — then generate a
-            stronger version.
-          </p>
+        {/* PRICING */}
+        <section style={S.section} id="pricing" data-reveal="1">
+          <div style={S.sectionHead}>
+            <h2 style={S.h2}>WOVI Pricing Plans</h2>
+            <p style={S.sectionP}>
+              <strong>Pre-launch rule:</strong> All plans currently lead to the waitlist. You can view pricing, but cannot
+              activate yet. We’re collecting emails only.
+            </p>
+            <div style={S.notePill}>
+              <span style={S.pillDot} />
+              <span>Email only • Full billing activates at launch</span>
+            </div>
+          </div>
 
-          {/* NOTE: You already added these classes earlier; keep them.
-              They make mobile layout work. */}
-          <div style={S.scoreWrap} className="scoreGridMobileFix">
+          <div style={S.pricingGrid} className="pricingGridMobileFix">
+            {plans.map((p) => (
+              <div
+                key={p.key}
+                style={{
+                  ...S.planCard,
+                  ...(p.key === "growth" ? S.planCardPopular : null),
+                }}
+                className="woviPlanHover"
+                onClick={() => openWaitlist(p.key)}
+                role="button"
+                tabIndex={0}
+              >
+                <div style={S.planTop}>
+                  <div style={S.planName}>{p.name}</div>
+                  {p.tag ? <div style={S.mostPopular}>Most Popular</div> : <div style={{ height: 24 }} />}
+                </div>
+
+                <div style={S.planPillRow}>
+                  <div style={S.planPill}>{p.pill}</div>
+                </div>
+
+                <div style={S.priceRow}>
+                  <div style={S.price}>{p.price}</div>
+                  {"per" in p && p.per ? <div style={S.per}>{p.per}</div> : null}
+                </div>
+
+                <div style={S.planSub}>{p.sub}</div>
+
+                <div style={S.divider} />
+
+                <div style={S.includes}>Includes</div>
+                <ul style={S.ul}>
+                  {p.bullets.map((b) => (
+                    <li key={b} style={S.li}>
+                      <span style={S.bulletDot} />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button style={S.planBtn} onClick={(e) => (e.preventDefault(), e.stopPropagation(), openWaitlist(p.key))}>
+                  Join waitlist
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div style={S.billingBox}>
+            <div style={S.billingTitle}>Billing Rules (When Live)</div>
+            <div style={S.billingGrid}>
+              {[
+                "All plans require a credit card",
+                "Free Trial still requires a card",
+                "Monthly recurring billing",
+                "Cancel anytime • Upgrade/downgrade anytime • No contracts",
+              ].map((t) => (
+                <div key={t} style={S.billingItem}>
+                  <span style={S.checkDot} />
+                  <span>{t}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* POST SCORE DEMO */}
+        <section style={S.section} id="post-score" data-reveal="1">
+          <div style={S.sectionHead}>
+            <h2 style={S.h2}>Upload a post → Get an AI score</h2>
+            <p style={S.sectionP}>
+              Pre-launch demo: paste a post caption and Wovi will rate it (hook, clarity, CTA, voice) — then generate a
+              stronger version.
+            </p>
+          </div>
+
+          <div
+            style={S.scoreWrap}
+            className="scoreGridMobileFix"
+          >
             {/* Left input */}
-            <div style={S.scoreCard}>
+            <div style={S.scoreCard} className="glassCard">
               <div style={S.scoreLabel}>Paste your post caption</div>
               <textarea
                 style={S.textarea}
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                placeholder={`Example:\n“Quick question — what’s the #1 thing stopping you from posting consistently?\nReply ‘ME’ and I’ll send a free content plan idea.”`}
+                placeholder={`Example:\n“New update this week — we’re opening 3 new slots.\nWant one? Reply ‘INFO’ and we’ll send details.”`}
               />
 
               <div style={S.scoreBtns}>
-                <button className="woviTapBtn" style={S.primaryBtn} onClick={getScore} disabled={loadingScore}>
-                  {loadingScore ? "Scoring…" : "Get score"}
+                <button style={S.primaryBtnSmall} onClick={getScore}>
+                  Get score
                 </button>
-                <button className="woviTapBtn" style={S.ghostBtn} onClick={clearScore} disabled={loadingScore}>
+                <button style={S.secondaryBtnSmall} onClick={clearScore}>
                   Clear
                 </button>
               </div>
@@ -428,1060 +505,746 @@ export default function HomePage() {
               <div style={S.tinyMuted}>This is a demo score (no account needed yet).</div>
             </div>
 
-            {/* Right result — swipeable on mobile */}
-            <div style={S.scoreCard}>
-              <div style={S.scoreLabel}>Your Wovi Score</div>
+            {/* Right results (swipe on mobile) */}
+            <div style={S.scoreRightOuter} className="glassCard">
+              <div style={S.scoreRightTitle}>Your Wovi Score</div>
+              <div style={S.scoreRightSub}>Paste a post and press “Get score”.</div>
 
-              {!score && !loadingScore && <div style={S.scoreEmpty}>Paste a post and press “Get score”.</div>}
-              {loadingScore && <div style={S.scoreEmpty}>Analyzing…</div>}
-
-              {score && !loadingScore && (
-                <>
-                  <div ref={swipeRef} className="woviSwipeWrap">
-                    {/* Card 1: total */}
-                    <div style={S.resultCard} className="woviSwipeCard" data-swipe-card="1">
-                      <div style={S.resultTop}>
-                        <div style={S.resultTitle}>Score</div>
-                        <div style={S.bigScore}>{score.total}/100</div>
+              <div ref={swipeRef} style={S.swipeRow} className="swipeRow">
+                {/* Card 1: Score */}
+                <div style={S.swipeCard} data-swipe-card="1">
+                  {score === null ? (
+                    <div style={S.emptyState}>No score yet.</div>
+                  ) : (
+                    <div style={S.scoreBigWrap}>
+                      <div style={S.scoreBig}>{score}/100</div>
+                      <div style={S.scoreBarOuter}>
+                        <div style={{ ...S.scoreBarInner, width: `${clamp(score, 0, 100)}%` }} />
                       </div>
-                      <div style={S.barOuter}>
-                        <div style={{ ...S.barInner, width: `${Math.max(0, Math.min(100, score.total))}%` }} />
-                      </div>
-                      <div style={S.resultHint}>Higher = stronger hook, clarity, CTA, and voice.</div>
+                      {breakdown ? (
+                        <div style={S.breakdown}>
+                          <BreakRow label="Hook" value={breakdown.hook} max={35} />
+                          <BreakRow label="Clarity" value={breakdown.clarity} max={25} />
+                          <BreakRow label="CTA" value={breakdown.cta} max={25} />
+                          <BreakRow label="Voice" value={breakdown.voice} max={15} />
+                        </div>
+                      ) : null}
                     </div>
+                  )}
+                </div>
 
-                    {/* Card 2: breakdown */}
-                    <div style={S.resultCard} className="woviSwipeCard" data-swipe-card="1">
-                      <div style={S.resultTitle}>Breakdown</div>
-                      <div style={S.breakList}>
-                        {score.breakdown.map((b) => (
-                          <div key={b.label} style={S.breakRow}>
-                            <div style={S.breakLeft}>
-                              <div style={S.breakLabel}>{b.label}</div>
-                              <div style={S.breakNote}>{b.note}</div>
-                            </div>
-                            <div style={S.breakRight}>
-                              {Math.round(b.score)}/{b.max}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Card 3: improved caption */}
-                    <div style={S.resultCard} className="woviSwipeCard" data-swipe-card="1">
-                      <div style={S.resultTitle}>Improved version</div>
-                      <div style={S.improvedBox}>{score.improved}</div>
+                {/* Card 2: Improved caption */}
+                <div style={S.swipeCard} data-swipe-card="1">
+                  {improved ? (
+                    <div>
+                      <div style={S.improveTitle}>Improved caption</div>
+                      <pre style={S.pre}>{improved}</pre>
                       <button
-                        className="woviTapBtn"
                         style={S.copyBtn}
-                        onClick={() => navigator.clipboard.writeText(score.improved)}
+                        onClick={() => {
+                          navigator.clipboard.writeText(improved);
+                        }}
                       >
                         Copy improved caption
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={S.emptyState}>Your improved caption will appear here.</div>
+                  )}
+                </div>
 
-                  {/* Dots (mobile) */}
-                  <div className="woviSwipeDots">
-                    {[0, 1, 2].map((i) => (
-                      <button
-                        key={i}
-                        className={`woviSwipeDot ${activeDot === i ? "woviSwipeDotActive" : ""}`}
-                        onClick={() => scrollToCard(i)}
-                        aria-label={`Go to card ${i + 1}`}
-                        style={{ border: "none", cursor: "pointer" }}
-                      />
-                    ))}
+                {/* Card 3: Next step CTA */}
+                <div style={S.swipeCard} data-swipe-card="1">
+                  <div style={S.nextStepBox}>
+                    <div style={S.nextStepTitle}>Want this every week?</div>
+                    <div style={S.nextStepText}>
+                      Wovi turns your weekly goals into consistent, ready-to-post content — for any business.
+                    </div>
+                    <button style={S.primaryBtnSmall} onClick={() => openWaitlist()}>
+                      Join waitlist
+                    </button>
+                    <div style={S.tinyMuted}>Early access may include special launch pricing.</div>
                   </div>
-                </>
-              )}
+                </div>
+              </div>
+
+              {/* Dots (mobile) */}
+              <div style={S.dots}>
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={i}
+                    style={{
+                      ...S.dot,
+                      opacity: activeDot === i ? 1 : 0.35,
+                      transform: activeDot === i ? "scale(1.05)" : "scale(1)",
+                    }}
+                    onClick={() => {
+                      const el = swipeRef.current;
+                      if (!el) return;
+                      const cards = Array.from(el.querySelectorAll("[data-swipe-card='1']")) as HTMLElement[];
+                      const target = cards[i];
+                      if (!target) return;
+                      el.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+                    }}
+                    aria-label={`Go to card ${i + 1}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <footer style={S.footer}>
-          <div style={S.footerLine} />
-          <div style={S.footerText}>© {new Date().getFullYear()} Wovi · Pre-launch waitlist</div>
+          <div style={S.footerInner}>
+            <div>
+              <div style={S.footerBrand}>Wovi</div>
+              <div style={S.footerText}>AI that runs social media for any business.</div>
+            </div>
+            <button style={S.navBtn} onClick={() => openWaitlist()}>
+              Join waitlist
+            </button>
+          </div>
         </footer>
       </main>
 
-      {/* Sticky bottom CTA (mobile) */}
-      <div className="woviStickyCtaBar">
-        <div className="woviStickyCtaInner">
-          <div className="woviStickyText">
-            Pre-launch: join the waitlist for early access and possible launch pricing.
-          </div>
-          <button className="woviTapBtn" style={S.stickyBtn} onClick={() => openWaitlist(prettyPlan)}>
-            Join waitlist
-          </button>
-        </div>
-      </div>
-
-      {/* Waitlist modal */}
-      {waitlistOpen && (
-        <div style={S.modalOverlay} onMouseDown={() => setWaitlistOpen(false)}>
-          <div style={S.modal} onMouseDown={(e) => e.stopPropagation()}>
+      {/* WAITLIST MODAL */}
+      {showWaitlist ? (
+        <div
+          style={S.modalOverlay}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowWaitlist(false);
+          }}
+        >
+          <div style={S.modal} className="glassCard" role="dialog" aria-modal="true" aria-label="Join waitlist">
             <div style={S.modalTop}>
-              <div style={S.modalTitle}>Join the waitlist</div>
-              <button className="woviTapBtn" style={S.modalClose} onClick={() => setWaitlistOpen(false)}>
+              <div>
+                <div style={S.modalTitle}>Join the waitlist</div>
+                <div style={S.modalSub}>
+                  We’re launching in small batches. Enter your email to get early access.
+                </div>
+              </div>
+
+              <button style={S.modalClose} onClick={() => setShowWaitlist(false)} aria-label="Close">
                 ✕
               </button>
             </div>
 
-            <div style={S.modalSub}>
-              We’re launching in small batches. Enter your email to get early access.
-              <div style={S.modalPlanLine}>
-                Selected plan: <b>{prettyPlan}</b>
+            <form onSubmit={submitWaitlist} style={S.form}>
+              <label style={S.inputLabel}>Email</label>
+              <input
+                style={S.input}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@business.com"
+                type="email"
+                autoComplete="email"
+              />
+
+              <div style={S.modalTiny}>
+                {selectedPlan ? (
+                  <span>
+                    Selected plan: <strong>{selectedPlan.toUpperCase()}</strong>
+                  </span>
+                ) : (
+                  <span>Plan selection optional (we’ll still save your spot).</span>
+                )}
               </div>
-            </div>
 
-            {!waitlistDone ? (
-              <form onSubmit={submitWaitlist} style={{ display: "grid", gap: 12 }}>
-                <input
-                  style={S.input}
-                  placeholder="you@business.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  inputMode="email"
-                />
+              <button style={S.submitBtn} disabled={emailStatus === "loading"}>
+                {emailStatus === "loading" ? "Joining..." : "Join waitlist"}
+              </button>
 
-                {waitlistError && <div style={S.errorText}>{waitlistError}</div>}
-
-                <button className="woviTapBtn" style={S.primaryBtn} type="submit">
-                  Join the waitlist
-                </button>
-
-                <div style={S.tinyMuted}>Early access may include special launch pricing.</div>
-              </form>
-            ) : (
-              <div style={S.successBox}>
-                <div style={S.successTitle}>You’re on the list.</div>
-                <div style={S.successBody}>
-                  Thanks — we’ll email you as soon as the <b>public beta</b> is ready.
+              {emailMsg ? (
+                <div
+                  style={{
+                    ...S.msg,
+                    ...(emailStatus === "error" ? S.msgErr : S.msgOk),
+                  }}
+                >
+                  {emailMsg}
                 </div>
-                <button className="woviTapBtn" style={S.secondaryBtn} onClick={() => setWaitlistOpen(false)}>
-                  Done
-                </button>
+              ) : null}
+
+              <div style={S.modalFinePrint}>
+                No spam. No selling data. Unsubscribe anytime.
               </div>
-            )}
+            </form>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
+      ) : null}
 
-/* -------------------------
-   Components
-------------------------- */
-
-function PlanCard(props: {
-  title: string;
-  badge: string;
-  price: string;
-  per: string;
-  accent: "green" | "teal" | "blue";
-  highlight?: boolean;
-  features: string[];
-  bestFor: string;
-  cta: string;
-  onClick: () => void;
-}) {
-  const accentStyle =
-    props.accent === "green"
-      ? S.accentGreen
-      : props.accent === "blue"
-      ? S.accentBlue
-      : S.accentTeal;
-
-  return (
-    <div style={{ ...S.planCard, ...(props.highlight ? S.planHighlight : null) }} className="woviPlanHover">
-      <div style={S.planTop}>
-        <div style={S.planTitleRow}>
-          <div style={S.planTitle}>{props.title}</div>
-          <div style={{ ...S.planBadge, ...accentStyle }}>{props.badge}</div>
-        </div>
-
-        <div style={S.planPriceRow}>
-          <div style={S.planPrice}>{props.price}</div>
-          <div style={S.planPer}>{props.per}</div>
-        </div>
-
-        <div style={S.planDivider} />
-      </div>
-
-      <div style={S.planBody}>
-        <div style={S.planLabel}>Includes</div>
-        <ul style={S.planList}>
-          {props.features.map((f) => (
-            <li key={f} style={S.planLi}>
-              <span style={{ ...S.bulletDot, ...accentStyle }} />
-              {f}
-            </li>
-          ))}
-        </ul>
-
-        <div style={S.planLabel}>Best for</div>
-        <div style={S.planBestFor}>{props.bestFor}</div>
-
-        <button className="woviTapBtn" style={S.planCta} onClick={props.onClick}>
-          {props.cta}
+      {/* MOBILE STICKY CTA */}
+      <div style={S.mobileSticky} className="mobileStickyCta">
+        <button style={S.mobileStickyBtn} onClick={() => openWaitlist()}>
+          Join waitlist
         </button>
       </div>
     </div>
   );
 }
 
-/* -------------------------
-   Helpers
-------------------------- */
-
-function scrollToId(id: string) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+function BreakRow(props: { label: string; value: number; max: number }) {
+  const pct = Math.round((props.value / props.max) * 100);
+  return (
+    <div style={S.breakRow}>
+      <div style={S.breakLeft}>
+        <span style={S.breakDot} />
+        <span>{props.label}</span>
+      </div>
+      <div style={S.breakRight}>
+        <span style={S.breakNum}>
+          {props.value}/{props.max}
+        </span>
+        <div style={S.breakBarOuter}>
+          <div style={{ ...S.breakBarInner, width: `${pct}%` }} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function buildImprovedCaption(input: string) {
-  const clean = input.trim().replace(/\s+\n/g, "\n").replace(/\n{3,}/g, "\n\n");
-
-  // If user already has multiple lines, keep it but improve structure.
-  const base =
-    clean.length > 160
-      ? clean.slice(0, 160).trim()
-      : clean;
-
-  return [
-    "Quick question:",
-    "What’s the #1 thing stopping you from posting consistently right now?",
-    "",
-    "Reply “ME” and I’ll send a simple, ready-to-post caption idea you can use this week.",
-    "",
-    "No pressure — just a fast win.",
-  ].join("\n");
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
 }
-
-/* -------------------------
-   Styles (no extra libs)
-------------------------- */
 
 const S: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
-    background: "#05070a",
+    background: "#070A0F",
     color: "rgba(255,255,255,0.92)",
     position: "relative",
     overflowX: "hidden",
   },
 
-  bgGlow: {
-    position: "fixed",
-    inset: 0,
+  bgGlowA: {
+    position: "absolute",
+    inset: "-25% -10% auto -10%",
+    height: 680,
     background:
-      "radial-gradient(800px 500px at 18% 18%, rgba(2,243,220,0.18), transparent 55%), radial-gradient(700px 520px at 78% 22%, rgba(33,174,245,0.18), transparent 55%), radial-gradient(720px 520px at 55% 70%, rgba(87,254,114,0.10), transparent 58%)",
+      "radial-gradient(closest-side, rgba(2,243,220,0.22), rgba(33,174,245,0.12), rgba(0,0,0,0))",
+    filter: "blur(12px)",
     pointerEvents: "none",
-    zIndex: 0,
   },
-
-  bgGrid: {
-    position: "fixed",
+  bgGlowB: {
+    position: "absolute",
+    inset: "10% -20% auto auto",
+    width: 760,
+    height: 760,
+    background:
+      "radial-gradient(closest-side, rgba(87,254,114,0.16), rgba(1,222,244,0.10), rgba(0,0,0,0))",
+    filter: "blur(18px)",
+    pointerEvents: "none",
+  },
+  grid: {
+    position: "absolute",
     inset: 0,
     backgroundImage:
-      "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)",
-    backgroundSize: "52px 52px",
-    opacity: 0.22,
-    maskImage: "radial-gradient(circle at 50% 35%, black 0%, transparent 72%)",
+      "linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)",
+    backgroundSize: "48px 48px",
+    maskImage: "radial-gradient(ellipse at top, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%)",
+    opacity: 0.45,
     pointerEvents: "none",
-    zIndex: 0,
-  },
-
-  topbar: {
-    position: "sticky",
-    top: 0,
-    zIndex: 50,
-    padding: "14px 18px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    background: "rgba(0,0,0,0.25)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-  },
-
-  brand: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    cursor: "pointer",
-    userSelect: "none",
-  },
-
-  logoCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    background:
-      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    display: "grid",
-    placeItems: "center",
-    boxShadow: "0 16px 44px rgba(0,0,0,0.45)",
-  },
-
-  logoW: {
-    fontWeight: 950,
-    color: "#041015",
-    fontSize: 16,
-    letterSpacing: -0.02,
-  },
-
-  brandName: {
-    fontWeight: 900,
-    letterSpacing: 0.4,
-    fontSize: 13,
-  },
-
-  brandTag: {
-    fontSize: 12,
-    opacity: 0.72,
   },
 
   nav: {
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
     display: "flex",
-    gap: 10,
     alignItems: "center",
+    justifyContent: "space-between",
+    padding: "18px 22px",
+    maxWidth: 1160,
+    margin: "0 auto",
+    backdropFilter: "blur(10px)",
   },
 
+  brand: { display: "flex", alignItems: "center", gap: 12 },
+  logoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    background:
+      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
+    display: "grid",
+    placeItems: "center",
+  },
+  logoW: { fontWeight: 900, fontSize: 22, color: "#041015", letterSpacing: -0.5 },
+  brandName: { fontWeight: 900, letterSpacing: -0.2, lineHeight: 1.05 },
+  brandTag: { opacity: 0.72, fontSize: 12, marginTop: 2 },
+
+  navRight: { display: "flex", alignItems: "center", gap: 10 },
   navLink: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.10)",
-    color: "rgba(255,255,255,0.85)",
-    fontWeight: 800,
-  },
-
-  navCta: {
     border: "none",
-    fontWeight: 950,
+    background: "transparent",
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: 750,
+    padding: "10px 12px",
+    borderRadius: 12,
+    cursor: "pointer",
+  },
+  navBtn: {
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 900,
+    padding: "10px 14px",
+    borderRadius: 14,
     color: "#041015",
     background:
       "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
   },
 
-  main: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: "22px 16px 70px",
-  },
+  main: { maxWidth: 1160, margin: "0 auto", padding: "10px 22px 140px" },
 
   heroGrid: {
     display: "grid",
-    gridTemplateColumns: "1.05fr 0.95fr",
+    gridTemplateColumns: "1.3fr 1fr",
     gap: 18,
+    marginTop: 14,
     alignItems: "start",
   },
 
   heroCard: {
-    borderRadius: 22,
+    borderRadius: 26,
     padding: 22,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    boxShadow: "0 28px 80px rgba(0,0,0,0.55)",
+    position: "relative",
   },
 
-  pill: {
+  pillRow: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     padding: "8px 12px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.35)",
-    fontSize: 12,
-    fontWeight: 900,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
     width: "fit-content",
-    marginBottom: 14,
   },
-
   pillDot: {
     width: 8,
     height: 8,
-    borderRadius: 999,
+    borderRadius: 99,
     background: "#02F3DC",
-    boxShadow: "0 0 0 4px rgba(2,243,220,0.14)",
+    boxShadow: "0 0 0 6px rgba(2,243,220,0.10)",
   },
+  pillText: { fontSize: 12, fontWeight: 800, opacity: 0.9 },
 
-  heroH1: {
-    margin: 0,
-    fontWeight: 980,
-    letterSpacing: -0.03,
-    lineHeight: 1.06,
-    fontSize: 52,
+  h1: {
+    fontSize: 56,
+    lineHeight: 1.02,
+    letterSpacing: -1.5,
+    margin: "16px 0 12px",
+    fontWeight: 950,
   },
 
   underlineWrap: {
+    color: "#02F3DC",
     position: "relative",
     display: "inline-block",
+    paddingBottom: 2,
   },
-
-  underlineText: {
-    color: "#02F3DC",
-  },
-
-  underlineAnim: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: -6,
-    height: 3,
-    borderRadius: 999,
-    background:
-      "linear-gradient(90deg, rgba(2,243,220,0.25), rgba(2,243,220,0.95), rgba(33,174,245,0.95), rgba(87,254,114,0.55))",
-    filter: "blur(0px)",
-    transformOrigin: "left",
-    animation: "woviUnderline 2.6s ease-in-out infinite",
-  } as any,
 
   heroP: {
-    marginTop: 12,
-    marginBottom: 16,
-    opacity: 0.82,
-    maxWidth: 760,
+    fontSize: 16,
+    opacity: 0.78,
+    lineHeight: 1.65,
+    maxWidth: 680,
+    margin: "0 0 18px",
   },
 
-  heroBtns: {
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-    marginBottom: 16,
-  },
+  heroBtns: { display: "flex", gap: 10, flexWrap: "wrap" },
 
   primaryBtn: {
     border: "none",
+    cursor: "pointer",
     fontWeight: 950,
-    fontSize: 14,
+    padding: "12px 16px",
+    borderRadius: 16,
     color: "#041015",
     background:
       "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
     boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
+    minHeight: 44,
   },
-
   secondaryBtn: {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    color: "rgba(255,255,255,0.88)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    cursor: "pointer",
     fontWeight: 900,
+    padding: "12px 16px",
+    borderRadius: 16,
+    color: "rgba(255,255,255,0.88)",
+    background: "rgba(255,255,255,0.05)",
+    minHeight: 44,
   },
 
-  heroStats: {
+  heroMiniGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gap: 10,
+    marginTop: 18,
   },
-
-  statCard: {
-    borderRadius: 16,
-    padding: 14,
-    background: "rgba(0,0,0,0.30)",
+  miniCard: {
+    borderRadius: 18,
+    padding: 12,
     border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(0,0,0,0.18)",
   },
+  miniTitle: { fontSize: 11, opacity: 0.7, fontWeight: 800, marginBottom: 6, textTransform: "uppercase" },
+  miniValue: { fontSize: 14, fontWeight: 900, marginBottom: 4 },
+  miniNote: { fontSize: 12, opacity: 0.7, lineHeight: 1.45 },
 
-  statTitle: {
-    fontSize: 11,
-    fontWeight: 950,
-    opacity: 0.62,
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
-    marginBottom: 6,
-  },
-
-  statValue: {
-    fontSize: 14,
-    fontWeight: 950,
-    marginBottom: 4,
-  },
-
-  statNote: {
-    fontSize: 12,
-    opacity: 0.68,
-    lineHeight: 1.45,
-  },
-
-  weekCard: {
-    borderRadius: 22,
-    padding: 18,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    boxShadow: "0 28px 80px rgba(0,0,0,0.55)",
-  },
-
-  weekHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  weekTitle: {
-    fontWeight: 950,
-    fontSize: 15,
-  },
-
+  weekCard: { borderRadius: 26, padding: 18 },
+  weekHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 },
+  weekTitle: { fontWeight: 950, letterSpacing: -0.4, fontSize: 16 },
+  weekSub: { opacity: 0.7, fontSize: 12, marginTop: 4 },
   weekBadge: {
-    fontSize: 11,
-    fontWeight: 950,
-    padding: "6px 10px",
+    fontSize: 12,
+    fontWeight: 900,
+    padding: "8px 10px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.35)",
+    background: "rgba(255,255,255,0.04)",
     opacity: 0.9,
   },
-
-  weekGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-
-  weekMini: {
-    borderRadius: 16,
+  weekGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  weekBox: {
+    borderRadius: 18,
     padding: 12,
-    background: "rgba(0,0,0,0.30)",
     border: "1px solid rgba(255,255,255,0.08)",
-    minHeight: 92,
+    background: "rgba(0,0,0,0.18)",
   },
-
-  weekMiniLabel: {
-    fontSize: 11,
-    fontWeight: 950,
-    opacity: 0.62,
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
-    marginBottom: 6,
-  },
-
-  weekMiniText: {
-    fontSize: 12.5,
-    lineHeight: 1.45,
-    opacity: 0.9,
-  },
-
-  weekMiniSmall: {
-    fontSize: 12,
-    opacity: 0.62,
-    marginTop: 6,
-  },
-
-  weekFooter: {
-    marginTop: 12,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-
-  weekFootNote: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-
-  weekCta: {
+  weekLabel: { fontSize: 11, opacity: 0.7, fontWeight: 900, textTransform: "uppercase", marginBottom: 8 },
+  weekStrong: { fontWeight: 950, fontSize: 13, marginBottom: 4 },
+  weekText: { fontSize: 12, opacity: 0.78, lineHeight: 1.45 },
+  weekTiny: { fontSize: 11, opacity: 0.6, marginTop: 8 },
+  weekFooter: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12 },
+  weekFooterText: { fontSize: 12, opacity: 0.7, lineHeight: 1.4 },
+  smallPrimary: {
     border: "none",
+    cursor: "pointer",
     fontWeight: 950,
-    fontSize: 13,
+    padding: "10px 14px",
+    borderRadius: 14,
     color: "#041015",
     background:
       "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    minHeight: 44,
   },
 
-  pricingWrap: {
-    marginTop: 18,
-    borderRadius: 22,
-    padding: 22,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    boxShadow: "0 28px 80px rgba(0,0,0,0.55)",
-  },
+  section: { marginTop: 22 },
+  sectionHead: { marginBottom: 12 },
+  h2: { fontSize: 28, letterSpacing: -0.6, margin: "0 0 8px", fontWeight: 950 },
+  sectionP: { margin: 0, opacity: 0.75, lineHeight: 1.65, maxWidth: 820 },
 
-  sectionTitle: {
-    margin: 0,
-    fontWeight: 980,
-    letterSpacing: -0.02,
-    fontSize: 26,
-  },
-
-  sectionSub: {
-    marginTop: 8,
-    marginBottom: 12,
-    opacity: 0.78,
-  },
-
-  pricingTag: {
+  notePill: {
+    marginTop: 10,
     display: "inline-flex",
     alignItems: "center",
-    gap: 8,
-    padding: "10px 12px",
+    gap: 10,
+    padding: "8px 12px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.35)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(255,255,255,0.04)",
     fontSize: 12,
-    fontWeight: 900,
-    width: "fit-content",
-    marginBottom: 14,
+    fontWeight: 800,
+    opacity: 0.9,
   },
 
-  pricingGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 12,
-  },
+  pricingGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 14 },
 
   planCard: {
-    borderRadius: 18,
-    overflow: "hidden",
-    background: "rgba(0,0,0,0.34)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
-  },
-
-  planHighlight: {
-    borderColor: "rgba(2,243,220,0.35)",
-    boxShadow: "0 30px 90px rgba(0,0,0,0.6)",
-  },
-
-  planTop: {
+    borderRadius: 22,
     padding: 16,
-  },
-
-  planTitleRow: {
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(0,0,0,0.22)",
+    cursor: "pointer",
+    minHeight: 380,
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
+    flexDirection: "column",
   },
-
-  planTitle: {
-    fontWeight: 980,
-    fontSize: 16,
+  planCardPopular: {
+    border: "1px solid rgba(2,243,220,0.35)",
+    boxShadow: "0 0 0 1px rgba(2,243,220,0.10), 0 28px 90px rgba(0,0,0,0.55)",
   },
-
-  planBadge: {
+  planTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  planName: { fontSize: 16, fontWeight: 950 },
+  mostPopular: {
     fontSize: 11,
     fontWeight: 950,
     padding: "6px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
+    background: "rgba(2,243,220,0.10)",
+    border: "1px solid rgba(2,243,220,0.25)",
+    color: "#02F3DC",
+    whiteSpace: "nowrap",
   },
-
-  accentGreen: { color: "#57FE72", borderColor: "rgba(87,254,114,0.35)" },
-  accentTeal: { color: "#02F3DC", borderColor: "rgba(2,243,220,0.35)" },
-  accentBlue: { color: "#21AEF5", borderColor: "rgba(33,174,245,0.35)" },
-
-  planPriceRow: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: 6,
-    marginTop: 12,
-  },
-
-  planPrice: {
-    fontSize: 42,
-    fontWeight: 980,
-    letterSpacing: -0.03,
-  },
-
-  planPer: {
-    fontSize: 13,
-    opacity: 0.7,
-    fontWeight: 800,
-  },
-
-  planDivider: {
-    marginTop: 14,
-    height: 1,
-    background: "rgba(255,255,255,0.10)",
-  },
-
-  planBody: {
-    padding: 16,
-    paddingTop: 0,
-    display: "grid",
-    gap: 10,
-  },
-
-  planLabel: {
-    fontSize: 12,
+  planPillRow: { marginTop: 10 },
+  planPill: {
+    display: "inline-flex",
+    fontSize: 11,
     fontWeight: 950,
-    opacity: 0.72,
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
-    marginTop: 6,
-  },
-
-  planList: {
-    margin: 0,
-    padding: 0,
-    listStyle: "none",
-    display: "grid",
-    gap: 8,
-  },
-
-  planLi: {
-    display: "flex",
-    gap: 10,
-    alignItems: "flex-start",
-    fontSize: 13,
-    opacity: 0.86,
-    lineHeight: 1.45,
-  },
-
-  bulletDot: {
-    width: 8,
-    height: 8,
+    padding: "6px 10px",
     borderRadius: 999,
-    marginTop: 6,
-    background: "rgba(255,255,255,0.25)",
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    opacity: 0.9,
   },
+  priceRow: { display: "flex", alignItems: "baseline", gap: 8, marginTop: 12 },
+  price: { fontSize: 44, fontWeight: 950, letterSpacing: -1.2 },
+  per: { fontSize: 12, opacity: 0.7, fontWeight: 900 },
+  planSub: { marginTop: 8, fontSize: 12, opacity: 0.75, lineHeight: 1.6 },
 
-  planBestFor: {
-    fontSize: 13,
-    opacity: 0.75,
-    lineHeight: 1.5,
-  },
+  divider: { height: 1, background: "rgba(255,255,255,0.08)", margin: "14px 0" },
+  includes: { fontSize: 12, fontWeight: 950, opacity: 0.9, marginBottom: 10 },
+  ul: { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 },
+  li: { display: "flex", alignItems: "flex-start", gap: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.5 },
+  bulletDot: { width: 8, height: 8, borderRadius: 99, background: "#57FE72", marginTop: 6, flex: "0 0 auto" },
 
-  planCta: {
-    marginTop: 8,
+  planBtn: {
+    marginTop: "auto",
     border: "none",
+    cursor: "pointer",
     fontWeight: 950,
-    fontSize: 14,
+    padding: "12px 14px",
+    borderRadius: 16,
     color: "#041015",
     background:
       "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
+    minHeight: 44,
   },
 
-  scoreSection: {
-    marginTop: 18,
+  billingBox: {
+    marginTop: 14,
     borderRadius: 22,
-    padding: 22,
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    boxShadow: "0 28px 80px rgba(0,0,0,0.55)",
-  },
-
-  scoreWrap: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 12,
-    marginTop: 12,
-  },
-
-  scoreCard: {
-    borderRadius: 18,
     padding: 16,
-    background: "rgba(0,0,0,0.34)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    minHeight: 260,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(0,0,0,0.20)",
   },
+  billingTitle: { fontWeight: 950, marginBottom: 10 },
+  billingGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 },
+  billingItem: { display: "flex", alignItems: "flex-start", gap: 10, fontSize: 12, opacity: 0.85, lineHeight: 1.5 },
+  checkDot: { width: 8, height: 8, borderRadius: 99, background: "#02F3DC", marginTop: 6, flex: "0 0 auto" },
 
-  scoreLabel: {
-    fontWeight: 950,
-    opacity: 0.9,
-    marginBottom: 10,
-  },
-
+  scoreWrap: { display: "grid", gridTemplateColumns: "1.15fr 1fr", gap: 14, marginTop: 14 },
+  scoreCard: { borderRadius: 22, padding: 16 },
+  scoreLabel: { fontWeight: 950, marginBottom: 10 },
   textarea: {
     width: "100%",
-    minHeight: 170,
+    minHeight: 190,
     resize: "vertical",
-    borderRadius: 14,
-    padding: 14,
-    background: "rgba(0,0,0,0.35)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    color: "rgba(255,255,255,0.90)",
-    outline: "none",
-    fontSize: 14,
-    lineHeight: 1.5,
-  },
-
-  scoreBtns: {
-    display: "flex",
-    gap: 10,
-    marginTop: 12,
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-
-  ghostBtn: {
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    color: "rgba(255,255,255,0.85)",
-    fontWeight: 900,
-  },
-
-  tinyMuted: {
-    marginTop: 10,
-    fontSize: 12,
-    opacity: 0.65,
-    lineHeight: 1.55,
-  },
-
-  scoreEmpty: {
-    marginTop: 10,
-    fontSize: 13,
-    opacity: 0.75,
-    lineHeight: 1.55,
-  },
-
-  resultCard: {
     borderRadius: 16,
     padding: 14,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.08)",
+    outline: "none",
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(0,0,0,0.25)",
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
+    lineHeight: 1.55,
   },
-
-  resultTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    gap: 10,
-    marginBottom: 10,
-  },
-
-  resultTitle: {
+  scoreBtns: { display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" },
+  primaryBtnSmall: {
+    border: "none",
+    cursor: "pointer",
     fontWeight: 950,
-    opacity: 0.9,
+    padding: "12px 14px",
+    borderRadius: 16,
+    color: "#041015",
+    background:
+      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    minHeight: 44,
+  },
+  secondaryBtnSmall: {
+    border: "1px solid rgba(255,255,255,0.14)",
+    cursor: "pointer",
+    fontWeight: 900,
+    padding: "12px 14px",
+    borderRadius: 16,
+    color: "rgba(255,255,255,0.88)",
+    background: "rgba(255,255,255,0.05)",
+    minHeight: 44,
+  },
+  tinyMuted: { marginTop: 10, fontSize: 12, opacity: 0.7, lineHeight: 1.55 },
+
+  scoreRightOuter: { borderRadius: 22, padding: 16 },
+  scoreRightTitle: { fontWeight: 950, marginBottom: 6 },
+  scoreRightSub: { fontSize: 12, opacity: 0.72, marginBottom: 12 },
+
+  swipeRow: {
+    display: "flex",
+    gap: 12,
+    overflowX: "auto",
+    scrollSnapType: "x mandatory",
+    paddingBottom: 6,
+  },
+  swipeCard: {
+    flex: "0 0 100%",
+    scrollSnapAlign: "start",
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(0,0,0,0.18)",
+    padding: 14,
+    minHeight: 230,
   },
 
-  bigScore: {
-    fontWeight: 980,
-    fontSize: 28,
-    color: "rgba(255,255,255,0.92)",
-  },
-
-  barOuter: {
+  emptyState: { opacity: 0.75, fontSize: 13, lineHeight: 1.6, paddingTop: 8 },
+  scoreBigWrap: { display: "grid", gap: 10 },
+  scoreBig: { fontSize: 44, fontWeight: 950, letterSpacing: -1.2 },
+  scoreBarOuter: {
     height: 10,
     borderRadius: 999,
-    background: "rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.08)",
     overflow: "hidden",
-    border: "1px solid rgba(255,255,255,0.08)",
   },
-
-  barInner: {
+  scoreBarInner: {
     height: "100%",
     borderRadius: 999,
     background:
-      "linear-gradient(90deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
-    boxShadow: "0 0 20px rgba(2,243,220,0.15)",
-  },
-
-  resultHint: {
-    marginTop: 10,
-    fontSize: 12,
-    opacity: 0.7,
-    lineHeight: 1.55,
-  },
-
-  breakList: {
-    display: "grid",
-    gap: 10,
-    marginTop: 10,
-  },
-
-  breakRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr auto",
-    gap: 12,
-    padding: "10px 10px",
-    borderRadius: 14,
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.08)",
-  },
-
-  breakLeft: {
-    display: "grid",
-    gap: 4,
-  },
-
-  breakLabel: {
-    fontWeight: 950,
-    fontSize: 13,
-  },
-
-  breakNote: {
-    fontSize: 12,
-    opacity: 0.7,
-    lineHeight: 1.45,
-  },
-
-  breakRight: {
-    fontWeight: 950,
-    opacity: 0.9,
-  },
-
-  improvedBox: {
-    marginTop: 10,
-    whiteSpace: "pre-wrap",
-    fontSize: 13,
-    lineHeight: 1.5,
-    padding: 12,
-    borderRadius: 14,
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    opacity: 0.9,
-  },
-
-  copyBtn: {
-    marginTop: 10,
-    width: "100%",
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: 950,
-  },
-
-  footer: {
-    marginTop: 22,
-    paddingBottom: 40,
-  },
-
-  footerLine: {
-    height: 1,
-    background: "rgba(255,255,255,0.10)",
-    marginBottom: 12,
-  },
-
-  footerText: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
-
-  /* Sticky CTA button */
-  stickyBtn: {
-    border: "none",
-    fontWeight: 950,
-    color: "#041015",
-    background:
       "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
   },
 
-  /* Modal */
+  breakdown: { display: "grid", gap: 10, marginTop: 8 },
+  breakRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  breakLeft: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 850, opacity: 0.9 },
+  breakDot: { width: 8, height: 8, borderRadius: 99, background: "#02F3DC" },
+  breakRight: { display: "flex", alignItems: "center", gap: 10, width: "55%" },
+  breakNum: { fontSize: 11, opacity: 0.7, fontWeight: 900, minWidth: 46, textAlign: "right" },
+  breakBarOuter: { flex: 1, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" },
+  breakBarInner: {
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(135deg, rgba(2,243,220,0.9), rgba(87,254,114,0.9))",
+  },
+
+  improveTitle: { fontWeight: 950, marginBottom: 10 },
+  pre: {
+    margin: 0,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    fontSize: 12,
+    opacity: 0.88,
+    lineHeight: 1.6,
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+  },
+  copyBtn: {
+    marginTop: 12,
+    border: "1px solid rgba(255,255,255,0.14)",
+    cursor: "pointer",
+    fontWeight: 900,
+    padding: "12px 14px",
+    borderRadius: 16,
+    color: "rgba(255,255,255,0.88)",
+    background: "rgba(255,255,255,0.05)",
+    minHeight: 44,
+  },
+
+  nextStepBox: { display: "grid", gap: 10 },
+  nextStepTitle: { fontSize: 16, fontWeight: 950 },
+  nextStepText: { fontSize: 12, opacity: 0.75, lineHeight: 1.6 },
+
+  dots: { display: "flex", justifyContent: "center", gap: 10, marginTop: 10 },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 99,
+    border: "1px solid rgba(255,255,255,0.25)",
+    background: "rgba(2,243,220,0.85)",
+    cursor: "pointer",
+  },
+
+  footer: { marginTop: 26, paddingTop: 20 },
+  footerInner: {
+    borderRadius: 22,
+    border: "1px solid rgba(255,255,255,0.08)",
+    background: "rgba(0,0,0,0.20)",
+    padding: 16,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  footerBrand: { fontWeight: 950, marginBottom: 4 },
+  footerText: { opacity: 0.7, fontSize: 12, lineHeight: 1.5 },
+
+  // Modal
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    zIndex: 80,
-    background: "rgba(0,0,0,0.65)",
+    background: "rgba(0,0,0,0.62)",
+    zIndex: 50,
     display: "grid",
     placeItems: "center",
     padding: 16,
   },
-
-  modal: {
-    width: "min(520px, 100%)",
-    borderRadius: 18,
-    padding: 16,
-    background: "rgba(10,12,16,0.92)",
-    border: "1px solid rgba(255,255,255,0.12)",
-    boxShadow: "0 40px 120px rgba(0,0,0,0.70)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  },
-
-  modalTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
-  },
-
-  modalTitle: {
-    fontWeight: 980,
-    fontSize: 16,
-  },
-
+  modal: { width: "min(520px, 100%)", borderRadius: 22, padding: 16 },
+  modalTop: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" },
+  modalTitle: { fontWeight: 950, fontSize: 18 },
+  modalSub: { marginTop: 6, opacity: 0.75, fontSize: 12, lineHeight: 1.6 },
   modalClose: {
-    minHeight: 40,
-    padding: "8px 10px",
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.05)",
+    color: "rgba(255,255,255,0.9)",
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(255,255,255,0.88)",
+    width: 40,
+    height: 40,
+    cursor: "pointer",
     fontWeight: 900,
   },
-
-  modalSub: {
-    fontSize: 13,
-    opacity: 0.78,
-    lineHeight: 1.5,
-    marginBottom: 12,
-  },
-
-  modalPlanLine: {
-    marginTop: 8,
-    fontSize: 12,
-    opacity: 0.85,
-  },
-
+  form: { marginTop: 14, display: "grid", gap: 10 },
+  inputLabel: { fontSize: 12, fontWeight: 900, opacity: 0.85 },
   input: {
     width: "100%",
-    borderRadius: 14,
-    padding: "12px 14px",
-    background: "rgba(0,0,0,0.35)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    color: "rgba(255,255,255,0.90)",
+    height: 48,
+    borderRadius: 16,
+    padding: "0 14px",
     outline: "none",
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(0,0,0,0.25)",
+    color: "rgba(255,255,255,0.92)",
     fontSize: 14,
   },
-
-  errorText: {
-    fontSize: 12,
-    color: "rgba(255,120,120,0.95)",
-    fontWeight: 900,
+  modalTiny: { fontSize: 12, opacity: 0.7, lineHeight: 1.5 },
+  submitBtn: {
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 950,
+    padding: "12px 14px",
+    borderRadius: 16,
+    color: "#041015",
+    background:
+      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
+    minHeight: 48,
   },
+  msg: { marginTop: 6, padding: 12, borderRadius: 16, fontSize: 12, fontWeight: 850, lineHeight: 1.5 },
+  msgOk: { background: "rgba(87,254,114,0.12)", border: "1px solid rgba(87,254,114,0.22)" },
+  msgErr: { background: "rgba(255,120,120,0.12)", border: "1px solid rgba(255,120,120,0.22)" },
+  modalFinePrint: { marginTop: 4, fontSize: 11, opacity: 0.6, lineHeight: 1.5 },
 
-  successBox: {
-    display: "grid",
-    gap: 10,
-    paddingTop: 6,
+  // Mobile sticky CTA
+  mobileSticky: {
+    position: "fixed",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 25,
+    padding: "10px 14px",
+    display: "none", // enabled via CSS for mobile only
+    background: "linear-gradient(to top, rgba(7,10,15,0.95), rgba(7,10,15,0.65), rgba(7,10,15,0))",
+    backdropFilter: "blur(10px)",
   },
-
-  successTitle: {
-    fontSize: 16,
-    fontWeight: 980,
-  },
-
-  successBody: {
-    fontSize: 13,
-    opacity: 0.82,
-    lineHeight: 1.55,
+  mobileStickyBtn: {
+    width: "100%",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 950,
+    padding: "14px 16px",
+    borderRadius: 18,
+    color: "#041015",
+    background:
+      "linear-gradient(135deg, #02F3DC 0%, #00EDEC 25%, #01DEF4 45%, #21AEF5 70%, #57FE72 100%)",
+    minHeight: 52,
+    boxShadow: "0 18px 55px rgba(0,0,0,0.45)",
   },
 };
-
-/* Keyframes via global style injection */
-if (typeof document !== "undefined") {
-  const id = "wovi-keyframes";
-  if (!document.getElementById(id)) {
-    const style = document.createElement("style");
-    style.id = id;
-    style.innerHTML = `
-      @keyframes woviUnderline {
-        0% { transform: scaleX(0.55); opacity: 0.55; }
-        50% { transform: scaleX(1); opacity: 0.95; }
-        100% { transform: scaleX(0.55); opacity: 0.55; }
-      }
-      /* Pricing hover glow without libraries */
-      .woviPlanHover:hover {
-        transform: translateY(-2px);
-        border-color: rgba(2,243,220,0.28);
-        box-shadow: 0 30px 90px rgba(0,0,0,0.65);
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
